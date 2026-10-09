@@ -49,14 +49,14 @@ export const METRICS = M;
 
 // Calendar metric tabs (brief 5.11), in the brief's order. Each points at a
 // registry entry above so Calendar and Statistics share one implementation.
-// `scope` mirrors where the Statistics tab computes the same metric: std dev
-// per hour is a cash formula (#6), so Calendar runs it on the period's cash
-// sessions, exactly as the Statistics Cash section does.
+// `scope` mirrors where the Statistics tab computes the same metric: win ratio
+// and std dev per hour are only shown in the Statistics Cash section, so
+// Calendar runs them on the period's cash sessions to report the same number.
 export const CALENDAR_METRICS = [
   { id: 'net', scope: 'all' },
   { id: 'hourly', scope: 'all' },
   { id: 'records', scope: 'all' },
-  { id: 'win_ratio', scope: 'all' },
+  { id: 'win_ratio', scope: 'cash' },
   { id: 'stddev', scope: 'cash' },
   { id: 'avg_net', scope: 'all' },
   { id: 'avg_duration', scope: 'all' },

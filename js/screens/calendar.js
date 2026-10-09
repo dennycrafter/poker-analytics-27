@@ -100,7 +100,7 @@ export function CalendarScreen(root, doc) {
     <div class="metric-tabs" role="tablist" aria-label="Metric">
       ${CALENDAR_METRICS.map(m => `<button role="tab" data-metric="${m.id}" aria-selected="${m.id === cm.id}" class="metric-tab${m.id === cm.id ? ' active' : ''}">${esc(METRICS[m.id].label)}</button>`).join('')}
     </div>
-    ${cm.scope === 'cash' ? '<div class="cal-note">Cash sessions only (per-hour standard deviation is a cash metric)</div>' : ''}
+    ${cm.scope === 'cash' ? '<div class="cal-note">Cash sessions only, matching the Statistics Cash section</div>' : ''}
     <div class="list cal-list">${rows.join('')}</div>`;
 
   const rerender = () => CalendarScreen(root, getState());
