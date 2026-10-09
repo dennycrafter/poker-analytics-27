@@ -5,7 +5,7 @@
 import { navigate } from '../router.js';
 import { getState, mutate, genId } from '../store.js';
 import { icon } from '../icons.js';
-import { esc, toast, selectSheet, openSheet } from '../ui.js';
+import { esc, toast, selectSheet, openSheet, makeActivatable } from '../ui.js';
 import { startLiveCash, startLiveTournament, logPastSession, getLiveSession, addSellActions } from '../domain.js';
 import { openSellSheet } from './sell.js';
 import { makeSellAction, soldPercent } from '../staking.js';
@@ -184,7 +184,7 @@ export function StartScreen(root, doc, kind) {
     if (state.past) {
       root.querySelector('[data-act=save-past]').addEventListener('click', savePast);
     } else {
-    const row = key => root.querySelector(`[data-field="${key}"]`);
+      const row = key => makeActivatable(root.querySelector(`[data-field="${key}"]`));
       row('location').addEventListener('click', () =>
         pickList('Location', 'locations', state.location_id, v => { state.location_id = v; render(); }, true));
       if (kind === 'tournament') {

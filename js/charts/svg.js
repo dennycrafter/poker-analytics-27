@@ -23,7 +23,7 @@ export function lineChart({ points, width = 340, height = 150, padX = 12, padY =
     const v = y0 + ((y1 - y0) * i) / gridLines;
     const y = Y(v).toFixed(1);
     grid += `<line x1="${padX}" y1="${y}" x2="${width - padX}" y2="${y}" stroke="#2a2a2a" stroke-dasharray="3 4"/>`;
-    grid += `<text x="${padX + 2}" y="${y - 3}" font-size="9" fill="#6b6b6b">${fmtNum(v)}</text>`;
+    grid += `<text x="${padX + 2}" y="${y - 3}" font-size="9" fill="var(--text-tertiary)">${fmtNum(v)}</text>`;
   }
   const path = points
     .map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1))
@@ -68,7 +68,7 @@ export function seriesChart({ points, type = 'line', width = 340, height = 200, 
     const v = y0 + ((y1 - y0) * i) / gridLines;
     const y = Y(v).toFixed(1);
     svg += `<line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="#2a2a2a" stroke-dasharray="3 4"/>`;
-    svg += `<text x="${padL - 6}" y="${(+y + 3).toFixed(1)}" font-size="9" fill="#6b6b6b" text-anchor="end">${fmtY(v)}</text>`;
+    svg += `<text x="${padL - 6}" y="${(+y + 3).toFixed(1)}" font-size="9" fill="var(--text-tertiary)" text-anchor="end">${fmtY(v)}</text>`;
   }
   if (y0 < 0) {
     svg += `<line x1="${padL}" y1="${Y(0).toFixed(1)}" x2="${width - padR}" y2="${Y(0).toFixed(1)}" stroke="#6b6b6b" stroke-width="0.8"/>`;
@@ -80,7 +80,7 @@ export function seriesChart({ points, type = 'line', width = 340, height = 200, 
   for (let k = 0; k < nLabels; k++) idxs.add(Math.round((k * (points.length - 1)) / Math.max(1, nLabels - 1)));
   for (const i of idxs) {
     const p = points[i];
-    svg += `<text x="${xAt(p, i).toFixed(1)}" y="${height - 7}" font-size="9" fill="#6b6b6b" text-anchor="middle">${esc(p.label ?? '')}</text>`;
+    svg += `<text x="${xAt(p, i).toFixed(1)}" y="${height - 7}" font-size="9" fill="var(--text-tertiary)" text-anchor="middle">${esc(p.label ?? '')}</text>`;
   }
 
   if (type === 'bar') {
@@ -135,7 +135,7 @@ export function barChart({ bars, width = 340, height = 210, fmtY = fmtNum, selec
     const v = y0 + ((y1 - y0) * i) / sc.gridLines;
     const y = Y(v).toFixed(1);
     svg += `<line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="#2a2a2a" stroke-dasharray="3 4"/>`;
-    svg += `<text x="${padL - 6}" y="${(+y + 3).toFixed(1)}" font-size="9" fill="#6b6b6b" text-anchor="end">${esc(fmtY(v))}</text>`;
+    svg += `<text x="${padL - 6}" y="${(+y + 3).toFixed(1)}" font-size="9" fill="var(--text-tertiary)" text-anchor="end">${esc(fmtY(v))}</text>`;
   }
   if (y0 < 0) {
     svg += `<line x1="${padL}" y1="${Y(0).toFixed(1)}" x2="${width - padR}" y2="${Y(0).toFixed(1)}" stroke="#6b6b6b" stroke-width="0.8"/>`;
@@ -151,7 +151,7 @@ export function barChart({ bars, width = 340, height = 210, fmtY = fmtNum, selec
       `<rect x="${(cx - slot / 2).toFixed(1)}" y="${padT}" width="${slot.toFixed(1)}" height="${innerH}" fill="transparent"/>` +
       `<rect x="${(cx - w / 2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0.8, yBot - yTop).toFixed(1)}" rx="1.5" fill="${fill}"${sel ? ' stroke="#fff" stroke-width="1"' : ''}/></g>`;
     if (i % labelEvery === 0) {
-      svg += `<text x="${cx.toFixed(1)}" y="${height - 7}" font-size="9" fill="#6b6b6b" text-anchor="middle">${esc(b.short ?? b.label)}</text>`;
+      svg += `<text x="${cx.toFixed(1)}" y="${height - 7}" font-size="9" fill="var(--text-tertiary)" text-anchor="middle">${esc(b.short ?? b.label)}</text>`;
     }
   });
   return `<svg class="line-chart stat-chart bar-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(ariaLabel)}">${svg}</svg>`;

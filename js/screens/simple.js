@@ -5,6 +5,7 @@ import { navigate } from '../router.js';
 import { getState } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, toast, confirmSheet } from '../ui.js';
+import { skeletonText } from '../skeleton.js';
 import { currentUser, signOut } from '../account.js';
 import { fmtDateShort, fmtClock } from '../format.js';
 import { openNoteSheet } from './players.js';
@@ -34,7 +35,7 @@ export function MoreScreen(root) {
       <div class="rows">
         <div class="field-row" data-row="account">
           <span class="field-name">Signed in as</span>
-          <span class="field-value" data-role="email">…</span>
+          <span class="field-value" data-role="email" aria-live="polite">${skeletonText('150px')}</span>
         </div>
       </div>
       <button class="btn-danger" data-act="signout">Sign out</button>
@@ -53,7 +54,7 @@ export function MoreScreen(root) {
       danger: true,
       onConfirm: async () => {
         const err = await signOut();
-        if (err) toast(err);
+        if (err) toast(err, { tone: 'error' });
       },
     });
   });

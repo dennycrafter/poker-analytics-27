@@ -4,7 +4,7 @@
 import { addCleanup, navigate } from '../router.js';
 import { getState, genId } from '../store.js';
 import { icon } from '../icons.js';
-import { esc, toast, openSheet, confirmSheet, numberSheet, textSheet } from '../ui.js';
+import { esc, toast, openSheet, confirmSheet, numberSheet, textSheet, makeActivatable } from '../ui.js';
 import { pickRef, pickNumber } from './picker.js';
 import { onTick } from '../tick.js';
 import { fmtTimer, fmtDur, fmtMoney, moneyClass, fmtClock, fmtDateShort, getCurrency } from '../format.js';
@@ -191,7 +191,7 @@ export function LiveScreen(root, doc, sessionId) {
     // --- row editors ---
     const on = (key, fn) => {
       const el = root.querySelector(`[data-field="${key}"]`);
-      if (el) el.addEventListener('click', fn);
+      if (el) makeActivatable(el).addEventListener('click', fn);
     };
     on('sell', () => openSellSheet({
       actions: sellActionsOf(getState(), sessionId),

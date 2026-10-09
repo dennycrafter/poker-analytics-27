@@ -10,16 +10,49 @@ export function esc(s) {
   }[c]));
 }
 
-export function toast(msg) {
+// Toasts double as a polite live region so screen readers hear confirmations
+// ("Session saved") without focus moving. tone 'error' styles the pill red and
+// stays up longer, since those messages usually need acting on.
+export function toast(msg, { tone = 'info' } = {}) {
   if (!toastEl) {
     toastEl = document.createElement('div');
     toastEl.className = 'toast';
+    toastEl.setAttribute('role', 'status');
+    toastEl.setAttribute('aria-live', 'polite');
+    toastEl.setAttribute('aria-atomic', 'true');
     document.body.appendChild(toastEl);
   }
   toastEl.textContent = msg;
+  toastEl.classList.toggle('error', tone === 'error');
+  // Restart the entrance even when a toast is already showing.
+  toastEl.classList.remove('show');
+  void toastEl.offsetWidth;
   toastEl.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2400);
+  toastTimer = setTimeout(() => toastEl.classList.remove('show'), tone === 'error' ? 4000 : 2400);
+}
+
+// Rows built as <div> (field rows in the start / live / detail screens) get
+// button semantics when a screen wires a tap handler on them, so keyboard and
+// screen-reader users can reach and activate them. Idempotent.
+export function makeActivatable(el) {
+  if (!el || el.dataset.activatable) return el;
+  el.dataset.activatable = '1';
+  if (!/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
+    el.setAttribute('role', 'button');
+    el.tabIndex = 0;
+    el.addEventListener('keydown', e => {
+      if (e.target !== el) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  }
+  return el;
+}
+
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function focusables(container) {
+  return [...container.querySelectorAll(FOCUSABLE)].filter(el => el.offsetParent !== null || el === document.activeElement);
 }
 
 let currentSheet = null;
@@ -29,26 +62,56 @@ export function isSheetOpen() { return currentSheet !== null; }
 // Close any open sheet; called on every route change so navigation always
 // dismisses overlays (a sheet must never survive a route render).
 export function closeSheets() {
-  if (currentSheet) currentSheet.close();
+  // The route render that follows owns focus, so do not bounce it back to the
+  // (about to be replaced) opener.
+  if (currentSheet) currentSheet.close({ restoreFocus: false });
 }
+
+let sheetSeq = 0;
 
 // Bottom sheet. onMount(sheetEl, close) attaches listeners.
 export function openSheet({ title = '', bodyHtml = '', onMount = null }) {
-  if (currentSheet) currentSheet.close();
+  // Focus returns to whatever opened the sheet (a row, a + button) on close.
+  const opener = currentSheet ? currentSheet.opener : document.activeElement;
+  if (currentSheet) currentSheet.close({ restoreFocus: false });
+  const titleId = `sheet-title-${++sheetSeq}`;
   const backdrop = document.createElement('div');
   backdrop.className = 'sheet-backdrop';
   backdrop.innerHTML =
-    `<div class="sheet" role="dialog" aria-modal="true">
-      <div class="sheet-grab"></div>
-      ${title ? `<div class="sheet-title">${esc(title)}</div>` : ''}
+    `<div class="sheet" role="dialog" aria-modal="true" tabindex="-1" ${title ? `aria-labelledby="${titleId}"` : 'aria-label="Options"'}>
+      <div class="sheet-grab" aria-hidden="true"></div>
+      ${title ? `<div class="sheet-title" id="${titleId}">${esc(title)}</div>` : ''}
       <div class="sheet-body">${bodyHtml}</div>
     </div>`;
   document.body.appendChild(backdrop);
-  const close = () => { backdrop.remove(); if (currentSheet === api) currentSheet = null; };
-  const api = { close, sheet: backdrop.querySelector('.sheet') };
+  const sheet = backdrop.querySelector('.sheet');
+  const close = ({ restoreFocus = true } = {}) => {
+    backdrop.remove();
+    if (currentSheet === api) currentSheet = null;
+    if (restoreFocus && opener && opener.isConnected && typeof opener.focus === 'function') {
+      opener.focus({ preventScroll: true });
+    }
+  };
+  const api = { close, sheet, opener };
   backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  // Escape dismisses; Tab cycles inside the sheet while it is open.
+  backdrop.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+    if (e.key !== 'Tab') return;
+    const items = focusables(sheet);
+    if (!items.length) { e.preventDefault(); return; }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const a = document.activeElement;
+    if (e.shiftKey && (a === first || a === sheet)) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
   currentSheet = api;
-  if (onMount) onMount(api.sheet, close);
+  if (onMount) onMount(sheet, close);
+  // Editors focus their own input in onMount. Otherwise focus the dialog
+  // itself (not its first control): screen readers announce the title, and no
+  // date picker or keyboard pops open on mobile. Tab then enters the sheet.
+  if (!sheet.contains(document.activeElement)) sheet.focus({ preventScroll: true });
   return api;
 }
 
