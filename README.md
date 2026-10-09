@@ -76,7 +76,14 @@ js/
   (`mailer_autoconfirm`), so sign-up is instant. "Forgot password" sends a
   reset link that opens the app's set-new-password screen.
 - **Security:** row level security on every table; each policy is
-  `auth.uid() = user_id` and `user_id` defaults to `auth.uid()`.
+  `auth.uid() = user_id` and `user_id` defaults to `auth.uid()`. Realtime does
+  not apply RLS to DELETE events, so a trigger on `realtime.subscription`
+  (`supabase/migrations/20261010120000_realtime_owner_filter.sql`) forces a
+  `user_id = <jwt sub>` filter onto every subscription to these tables;
+  signed-out subscriptions are rejected. Verify with
+  `node tests/realtime-delete-privacy.test.mjs` (live project, disposable
+  accounts; set `SECRET_SUPABASE_ACCESS_TOKEN` for cleanup). Re-apply that
+  migration if a Supabase Realtime upgrade ever drops the trigger.
 - **Sync:** screens read a synchronous in-memory document. Writes apply
   optimistically, then a diff of changed entities is upserted/deleted.
   Realtime `postgres_changes` pushes other devices' writes within about a
@@ -89,8 +96,8 @@ js/
 - **Keys:** only the project URL and the *publishable* key live in the repo
   (`js/config.js`); they are safe in browsers because of RLS. The service_role
   key and management tokens are never committed.
-- **Applying the schema:** run the migration SQL in the Supabase SQL editor (or
-  `supabase db push`). It also creates the RLS policies and `updated_at`
+- **Applying the schema:** run the migration SQL files in order in the Supabase
+  SQL editor (or `supabase db push`). It also creates the RLS policies and `updated_at`
   triggers, and adds the tables to the `supabase_realtime` publication.
 
 Buy-in single source of truth: live-tracked cash sessions derive buy-in from

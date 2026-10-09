@@ -115,8 +115,18 @@ async function cleanup(uids) {
     assert.deepEqual(Object.values(left).map(Number), [0, 0, 0, 0]));
 }
 
+// The fix lives in a trigger on Realtime's own table; a Realtime upgrade that
+// recreates realtime.subscription would silently drop it, so assert it exists.
+async function checkServerConfig() {
+  if (!process.env.SECRET_SUPABASE_ACCESS_TOKEN) return;
+  const rows = await mgmtQuery(`select tgname from pg_trigger
+    where tgrelid = 'realtime.subscription'::regclass and tgname = 'pa27_owner_filter' and tgenabled <> 'D'`);
+  test('server: pa27_owner_filter trigger is installed on realtime.subscription', () => assert.equal(rows.length, 1));
+}
+
 const uids = [];
 try {
+  await checkServerConfig();
   const A = await signUp(emailA); uids.push(A.uid);
   const B = await signUp(emailB); uids.push(B.uid);
   console.log(`  accounts: A=${A.uid} B=${B.uid}`);
@@ -138,6 +148,14 @@ try {
     for (const table of TABLES) ch = ch.on('postgres_changes', { event: '*', schema: 'public', table }, log('hostile'));
     return ch;
   });
+  // Signed-out client (publishable key only): must not see anyone's changes.
+  const anon = newClient();
+  const anonSeen = [];
+  const anonSub = await subscribe(anon, 'anon', ch => {
+    for (const table of TABLES) ch = ch.on('postgres_changes', { event: '*', schema: 'public', table }, p => anonSeen.push(p));
+    return ch;
+  }).then(() => 'subscribed', e => `rejected: ${e && e.message || e}`);
+  console.log(`  anon channel: ${anonSub}`);
   await sleep(1500); // let the server register the subscriptions
 
   const bIds = await churn(B, 'B');
@@ -152,6 +170,10 @@ try {
     console.log(`  ${which} channel received ${all.length} events:`);
     for (const e of all) console.log(`    ${e.type.padEnd(6)} ${e.table.padEnd(21)} old=${JSON.stringify(e.old)} new.id=${e.new && (e.new.id || e.new.user_id)}`);
   }
+
+  test(`anon channel: signed-out subscriber receives nothing (got ${anonSeen.length})`,
+    () => assert.equal(anonSeen.length, 0));
+  await anon.removeAllChannels();
 
   for (const which of ['client', 'hostile']) {
     const leaked = seen[which].filter(mentionsB);
