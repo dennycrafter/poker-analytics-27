@@ -1,0 +1,84 @@
+/* Variance simulator (Tier 8). Scoped under .vs-* so it never leaks into
+   other screens; reuses tokens from css/styles.css. 390px-first. */
+
+.vs-seg { padding-left: 0; padding-right: 0; }
+
+.vs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 12px;
+}
+.vs-field { margin-top: 12px; min-width: 0; }
+.vs-field .input { padding: 11px 12px; font-variant-numeric: tabular-nums; }
+.vs-unit { color: var(--text-tertiary); letter-spacing: 0.03em; }
+
+.vs-form .chips { margin-top: 0; }
+.vs-form .btn-primary:disabled { opacity: 0.6; cursor: progress; }
+
+.vs-seed-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 2px 0;
+}
+.vs-reroll {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 2px;
+}
+
+.vs-section { padding-left: 0; padding-right: 0; }
+.vs-chart { padding-left: 0; padding-right: 0; margin-bottom: 6px; }
+.vs-rows { padding: 0; }
+.vs-note { margin: 6px 0 4px; line-height: 1.45; }
+.vs-empty { padding: 36px 8px; text-align: center; color: var(--text-tertiary); }
+
+/* Fan chart */
+.vs-fan .vs-band { fill: var(--accent-dim); stroke: none; }
+.vs-fan .vs-median { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.vs-fan .vs-sample { fill: none; stroke: #6b6b6b; stroke-width: 0.9; opacity: 0.7; }
+.vs-fan .vs-start { stroke: #a8a8a8; stroke-width: 0.8; stroke-dasharray: 2 3; }
+.vs-fan .vs-zero { stroke: var(--negative); stroke-width: 0.8; opacity: 0.7; }
+
+.vs-legend {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding-top: 6px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.03em;
+}
+.vs-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.vs-key { display: inline-block; width: 14px; height: 8px; border-radius: 2px; }
+.vs-key-band { background: var(--accent-dim); }
+.vs-key-median { height: 2px; background: var(--accent); }
+.vs-key-sample { height: 1px; background: #6b6b6b; }
+
+/* Stat rows */
+.vs-stat { align-items: flex-start; padding: 12px 0; }
+.vs-stat .stat-value { font-size: 1.9rem; }
+.vs-stat .hint { line-height: 1.4; white-space: normal; }
+
+.vs-triple {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 2px 0 2px;
+}
+.vs-triple > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vs-q {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.vs-qv {
+  font-size: 1.05rem;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

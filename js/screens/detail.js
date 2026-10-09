@@ -4,7 +4,7 @@
 import { navigate } from '../router.js';
 import { getState, genId } from '../store.js';
 import { icon } from '../icons.js';
-import { esc, toast, openSheet, confirmSheet, numberSheet, textSheet, selectSheet } from '../ui.js';
+import { esc, toast, openSheet, confirmSheet, numberSheet, textSheet, selectSheet, makeActivatable } from '../ui.js';
 import { pickNumber } from './picker.js';
 import { fmtDur, fmtMoney, moneyClass, fmtClock, fmtDateShort, getCurrency, fmtNum } from '../format.js';
 import { playSeconds, netResult, stackBuyIn, stackCashedOut, effectiveHands, hourlyRate, sessionNet, sessionHours, hasStaking } from '../stats.js';
@@ -201,7 +201,7 @@ export function DetailScreen(root, doc, sessionId) {
 
     const on = (key, fn) => {
       const el = root.querySelector(`[data-field="${key}"]`);
-      if (el) el.addEventListener('click', fn);
+      if (el) makeActivatable(el).addEventListener('click', fn);
     };
     on('start', () => editTimeSheet('start'));
     on('end', () => editTimeSheet('end'));

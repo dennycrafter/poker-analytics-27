@@ -22,7 +22,7 @@ export function filterPillHtml(doc, tab) {
   const f = getFilter(doc, tab);
   if (!isActive(f)) return '';
   return `<div class="filter-pill-row">
-    <button class="filter-pill" data-act="filter" aria-label="Edit filter">
+    <button class="filter-pill" data-act="filter" aria-label="Edit filter: ${esc(summary(doc, f))}">
       <span class="filter-pill-text">${esc(summary(doc, f))}</span>
     </button>
     <button class="filter-pill-x" data-act="filter-clear" aria-label="Clear filter">${icon('x')}</button>

@@ -4,7 +4,8 @@
 
 import { subscribe, getState, startSync, stopSync, whenSaved, replaceDoc, genId, onSyncStatus } from './store.js';
 import { supabase } from './supabase-client.js';
-import { renderRoute, currentPath } from './router.js';
+import { renderRoute, currentPath, routeTab, resetRouteHistory } from './router.js';
+import { skeletonScreen } from './skeleton.js';
 import { tick, onTick } from './tick.js';
 import { icon } from './icons.js';
 import { getLiveSession } from './domain.js';
@@ -29,6 +30,10 @@ const LEGACY_DONE_KEY = 'pa27:legacy-migrated';
 let currentUserId = null;
 let shellMounted = false;
 let pendingRemote = false;
+// True between sign-in and the first usable document (device cache or the
+// first cloud pull). Screens would otherwise render the blank document and
+// flash "No sessions yet" at a user who has hundreds.
+let booting = false;
 
 function liveBannerHtml(live) {
   const t = fmtTimer(playSeconds(live));
@@ -45,6 +50,7 @@ function renderShell() {
     <div id="live-banner-slot"></div>
     <main id="screen" tabindex="-1"></main>
     <nav id="tabbar" aria-label="Main navigation">
+      <span class="tab-indicator" aria-hidden="true"></span>
       ${TABS.map(t =>
         `<a class="tab" data-tab="${t.id}" href="#${t.path}">
           ${icon(t.icon)}<span>${t.label}</span>
@@ -63,14 +69,31 @@ function paintBanner() {
   slot.innerHTML = live && !onLive ? liveBannerHtml(live) : '';
 }
 
+// Highlights the active tab and slides the indicator bar under it.
+function paintTabs(tab) {
+  const idx = Math.max(0, TABS.findIndex(t => t.id === tab));
+  document.querySelectorAll('#tabbar .tab').forEach(el => {
+    const on = el.dataset.tab === tab;
+    el.classList.toggle('active', on);
+    if (on) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  });
+  const bar = document.querySelector('#tabbar .tab-indicator');
+  if (bar) bar.style.transform = `translateX(${idx * 100}%)`;
+}
+
+function paintSkeleton() {
+  const tab = routeTab();
+  document.getElementById('screen').innerHTML = skeletonScreen(tab);
+  paintTabs(tab);
+}
+
 function paintBannerAndTabs() {
   if (!shellMounted) return;
+  if (booting) { paintSkeleton(); return; }
   pendingRemote = false;
   paintBanner();
   const { tab } = renderRoute();
-  document.querySelectorAll('#tabbar .tab').forEach(el => {
-    el.classList.toggle('active', el.dataset.tab === tab);
-  });
+  paintTabs(tab);
 }
 
 // A remote change must never wipe what the user is in the middle of: an open
@@ -83,6 +106,8 @@ function userIsEditing() {
 }
 
 subscribe((_doc, { source }) => {
+  // Any delivered document (cache paint or first pull) ends the skeleton.
+  booting = false;
   if (source === 'remote' && userIsEditing()) {
     pendingRemote = true;
     paintBanner();
@@ -109,7 +134,7 @@ setInterval(tick, 1000);
 // A write the server rejected is rolled back to server state; tell the user
 // instead of letting the change silently disappear.
 onSyncStatus(s => {
-  if (s.state === 'error') toast('A change could not be saved and was undone.');
+  if (s.state === 'error') toast('A change could not be saved and was undone.', { tone: 'error' });
 });
 
 // --- legacy migration -------------------------------------------------------
@@ -156,21 +181,30 @@ function showAuth(mode = 'login') {
 async function enterApp(user) {
   if (currentUserId === user.id) return;
   currentUserId = user.id;
+  resetRouteHistory();
   renderShell();
-  paintBannerAndTabs();
+  // Skeleton until data exists. A device cache ends it instantly: startSync
+  // notifies with the cached document before its cloud pull (see subscribe).
+  booting = true;
+  paintSkeleton();
   try {
     const { cloudEmpty } = await startSync(user.id);
     if (currentUserId !== user.id) return;
+    booting = false;
     paintBannerAndTabs();
     if (cloudEmpty) offerMigration(user.id);
   } catch (e) {
     console.error('sync: initial load failed', e);
-    toast('Could not load your data. Check your connection.');
+    booting = false;
+    paintBannerAndTabs();
+    toast('Could not load your data. Check your connection.', { tone: 'error' });
   }
 }
 
 function leaveApp() {
   currentUserId = null;
+  booting = false;
+  resetRouteHistory();
   stopSync();
   showAuth();
 }

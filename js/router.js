@@ -15,7 +15,9 @@ import { BankrollScreen, BankrollDetailScreen } from './screens/bankroll.js';
 import { SettingsScreen, MasterListScreen } from './screens/settings.js';
 import { PlayersScreen, PlayerDetailScreen } from './screens/players.js';
 import { Top10Screen } from './screens/top10.js';
+import { VarianceScreen } from './screens/variance.js';
 import { closeSheets } from './ui.js';
+import { transitionFor } from './motion.js';
 
 const ROUTES = [
   { re: /^\/feed$/, tab: 'feed', render: (r, d) => FeedScreen(r, d) },
@@ -31,6 +33,7 @@ const ROUTES = [
   { re: /^\/more\/settings$/, tab: 'more', render: (r, d) => SettingsScreen(r, d) },
   { re: /^\/more\/settings\/(games|locations|tournament_types|groups)$/, tab: 'more', render: (r, d, m) => MasterListScreen(r, d, m[1]) },
   { re: /^\/more\/top10$/, tab: 'more', render: (r, d) => Top10Screen(r, d) },
+  { re: /^\/more\/variance$/, tab: 'more', render: (r, d) => VarianceScreen(r, d) },
   { re: /^\/more\/players$/, tab: 'more', render: (r, d) => PlayersScreen(r, d) },
   { re: /^\/more\/players\/(.+)$/, tab: 'more', render: (r, d, m) => PlayerDetailScreen(r, d, m[1]) },
   { re: /^\/new\/(cash|tournament)$/, tab: 'feed', render: (r, d, m) => StartScreen(r, d, m[1]) },
@@ -62,6 +65,33 @@ export function navigate(path) {
   location.hash = '#' + path;
 }
 
+// Which tab a path belongs to, without rendering it (shell skeletons use this).
+export function routeTab(path = currentPath()) {
+  const r = ROUTES.find(x => x.re.test(path));
+  return r ? r.tab : 'feed';
+}
+
+let lastPath = null;
+let lastTab = null;
+
+function animateEntrance(root, kind) {
+  const el = root.firstElementChild;
+  if (!el) return;
+  // Animate the screen element itself, never #screen: a transform on #screen
+  // would become the containing block for the fixed modal screens.
+  el.classList.add('route-enter', `route-${kind}`);
+  el.addEventListener('animationend', () => el.classList.remove('route-enter', `route-${kind}`), { once: true });
+}
+
+// After a navigation, move focus to the new screen so keyboard and
+// screen-reader users start at its top instead of on a vanished control.
+function focusNewScreen(root) {
+  if (document.querySelector('.sheet-backdrop')) return; // a screen opened a sheet on mount
+  const a = document.activeElement;
+  if (a && root.contains(a) && a !== root) return; // the screen focused an input itself
+  root.focus({ preventScroll: true });
+}
+
 // Renders the active route. Returns { tab, path } for the shell.
 export function renderRoute() {
   runCleanups();
@@ -69,13 +99,24 @@ export function renderRoute() {
   const root = document.getElementById('screen');
   const doc = getState();
   const path = currentPath();
+  let match = null;
   for (const r of ROUTES) {
     const m = path.match(r.re);
-    if (m) {
-      r.render(root, doc, m);
-      return { tab: r.tab, path };
-    }
+    if (m) { match = { r, m }; break; }
   }
-  FeedScreen(root, doc);
-  return { tab: 'feed', path: '/feed' };
+  const tab = match ? match.r.tab : 'feed';
+  const shownPath = match ? path : '/feed';
+  if (match) match.r.render(root, doc, match.m);
+  else FeedScreen(root, doc);
+
+  const kind = transitionFor(lastPath, shownPath, lastTab, tab);
+  const navigated = lastPath !== null && lastPath !== shownPath;
+  lastPath = shownPath;
+  lastTab = tab;
+  if (kind) animateEntrance(root, kind);
+  if (navigated) focusNewScreen(root);
+  return { tab, path: shownPath };
 }
+
+// Sign-out / user switch: the next render is a first paint again.
+export function resetRouteHistory() { lastPath = null; lastTab = null; }
