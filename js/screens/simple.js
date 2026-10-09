@@ -1,4 +1,4 @@
-// Tier-1 screens that are not the core loop yet: Statistics / Calendar /
+// Screens not built yet: Calendar /
 // Reports show their section-8 empty states, More lists its rows with
 // "coming soon" behavior, and HandView / NoteView give seeded hand
 // histories and player notes a basic read view (full management in Tier 4).
@@ -10,7 +10,6 @@ import { esc, toast } from '../ui.js';
 import { fmtDateShort, fmtClock } from '../format.js';
 
 const EMPTY = {
-  '/stats': 'Play a session to see your stats.',
   '/calendar': 'Play a session to see your stats.',
   '/reports': 'Log at least 5 sessions to unlock reports.',
 };
@@ -25,7 +24,6 @@ function emptyTabHtml(title, path) {
     <div class="empty-state">${esc(EMPTY[path] || 'Nothing here yet.')}</div>`;
 }
 
-export function StatsScreen(root, doc) { root.innerHTML = `<div class="screen">${emptyTabHtml('Statistics', '/stats')}</div>`; }
 export function CalendarScreen(root, doc) { root.innerHTML = `<div class="screen">${emptyTabHtml('Calendar', '/calendar')}</div>`; }
 export function ReportsScreen(root, doc) { root.innerHTML = `<div class="screen">${emptyTabHtml('Reports', '/reports')}</div>`; }
 

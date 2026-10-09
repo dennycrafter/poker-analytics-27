@@ -7,12 +7,14 @@ import { StartScreen } from './screens/start.js';
 import { LiveScreen } from './screens/live.js';
 import { StackScreen } from './screens/stack.js';
 import { DetailScreen } from './screens/detail.js';
-import { StatsScreen, CalendarScreen, ReportsScreen, MoreScreen, HandView, NoteView } from './screens/simple.js';
+import { CalendarScreen, ReportsScreen, MoreScreen, HandView, NoteView } from './screens/simple.js';
+import { StatsScreen, StatDetailScreen } from './screens/stats.js';
 import { closeSheets } from './ui.js';
 
 const ROUTES = [
   { re: /^\/feed$/, tab: 'feed', render: (r, d) => FeedScreen(r, d) },
   { re: /^\/stats$/, tab: 'stats', render: (r, d) => StatsScreen(r, d) },
+  { re: /^\/stats\/(all|cash|tournament)\/([a-z0-9_]+)$/, tab: 'stats', render: (r, d, m) => StatDetailScreen(r, d, m[1], m[2]) },
   { re: /^\/calendar$/, tab: 'calendar', render: (r, d) => CalendarScreen(r, d) },
   { re: /^\/reports$/, tab: 'reports', render: (r, d) => ReportsScreen(r, d) },
   { re: /^\/more$/, tab: 'more', render: (r, d) => MoreScreen(r, d) },

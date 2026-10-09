@@ -7,6 +7,8 @@ import { icon } from '../icons.js';
 import { esc, openSheet } from '../ui.js';
 import { getCurrency, fmtMoney, moneyClass, fmtDur, weekdayAbbr, dayNum, monthLabel, fmtClock } from '../format.js';
 import { netResult, groupByMonth, playSeconds } from '../stats.js';
+import { getFilter, applyFilter, isActive } from '../filters.js';
+import { filterButtonHtml, filterPillHtml, wireFilter } from './filter.js';
 
 export function sessionRowHtml(doc, s) {
   const cur = getCurrency(doc);
@@ -116,10 +118,16 @@ export function FeedScreen(root, doc) {
   } else if (seg === 'notes') {
     listHtml = notesTabHtml(doc);
   } else {
-    const shown = seg === 'all' ? doc.sessions : ended;
+    // Feed keeps its own filter (brief 9). Live sessions stay visible on ALL
+    // so the in-progress session is never hidden by a filter.
+    const f = getFilter(doc, 'feed');
+    const base = seg === 'all' ? doc.sessions : ended;
+    const shown = base.filter(s => s.is_live || applyFilter(f, [s]).length);
     const groups = groupByMonth(shown);
     if (!groups.length) {
-      listHtml = '<div class="empty-block">No sessions yet. Tap + to log your first one.</div>';
+      listHtml = base.length && isActive(f)
+        ? '<div class="empty-block">No sessions match this filter.</div>'
+        : '<div class="empty-block">No sessions yet. Tap + to log your first one.</div>';
     } else {
       listHtml = groups.map(g => {
         const total = g.sessions.reduce((a, s) => a + netResult(doc, s), 0);
@@ -132,10 +140,11 @@ export function FeedScreen(root, doc) {
 
   root.innerHTML = `
     <header class="topbar">
-      <button class="topbtn" data-act="filter" aria-label="Filter">${icon('filter')}</button>
+      ${filterButtonHtml(doc, 'feed')}
       <h1>Feed</h1>
       <button class="topbtn accent" data-act="plus" aria-label="Add session">${icon('plus')}</button>
     </header>
+    ${filterPillHtml(doc, 'feed')}
     <div class="segmented" role="tablist">
       ${['all', 'sessions', 'hands', 'notes'].map(k =>
         `<button role="tab" aria-selected="${seg === k}" data-seg="${k}"
@@ -144,9 +153,7 @@ export function FeedScreen(root, doc) {
     <div class="list">${listHtml}</div>`;
 
   root.querySelector('[data-act=plus]').addEventListener('click', plusMenu);
-  root.querySelector('[data-act=filter]').addEventListener('click', () => {
-    openSheet({ title: 'Filter', bodyHtml: '<p style="padding:8px 4px;color:var(--text-secondary);font-size:15px">Filtering arrives with Statistics in the next update.</p>' });
-  });
+  wireFilter(root, 'feed');
   root.querySelectorAll('.segmented [data-seg]').forEach(btn => {
     btn.addEventListener('click', () => {
       window.__feedSeg = btn.dataset.seg;

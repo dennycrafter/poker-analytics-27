@@ -31,3 +31,81 @@ export function lineChart({ points, width = 340, height = 150, padX = 12, padY =
   return `<svg class="line-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="line chart">` +
     `${grid}<path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
+
+// Stat-detail chart (brief 5.10): line or bar over [{x, y, label}].
+// Green line/bars on dark bg, dashed gridlines, zero line, sparse x labels.
+// `spanBars` sizes each bar from the previous x to its own x (Duration view,
+// where x is cumulative hours) instead of uniform slots.
+export function seriesChart({ points, type = 'line', width = 340, height = 200, fmtY = fmtNum, spanBars = false, gridLines = 4 }) {
+  if (!points || !points.length || (type === 'line' && points.length < 2)) {
+    return '<div class="chart-empty">Not enough data yet</div>';
+  }
+  const padL = 40, padR = 10, padT = 12, padB = 24;
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  let y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys);
+  if (y1 === y0) { y1 += 1; y0 -= y0 === 0 ? 0 : 1; }
+  // Round-number gridlines: pick a 1/2/2.5/5 x 10^n step, snap bounds to it.
+  const raw = (y1 - y0) / gridLines;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(v => v >= raw) || 10 * mag;
+  y0 = Math.floor(y0 / step) * step; y1 = Math.ceil(y1 / step) * step;
+  gridLines = Math.max(1, Math.round((y1 - y0) / step));
+  const innerW = width - padL - padR, innerH = height - padT - padB;
+  const Y = v => padT + innerH - ((v - y0) / (y1 - y0)) * innerH;
+  let X, barW = 0, barLeft = null;
+  if (type === 'bar') {
+    if (spanBars) {
+      const xmax = Math.max(...xs) || 1;
+      X = v => padL + (v / xmax) * innerW;
+      barLeft = i => X(i ? points[i - 1].x : 0);
+    } else {
+      const slot = innerW / points.length;
+      barW = Math.max(1.5, slot * 0.7);
+      X = (v, i) => padL + slot * i + slot / 2;
+    }
+  } else {
+    let x0 = Math.min(...xs), x1 = Math.max(...xs);
+    if (x1 === x0) x1 = x0 + 1;
+    X = v => padL + ((v - x0) / (x1 - x0)) * innerW;
+  }
+
+  let svg = '';
+  for (let i = 0; i <= gridLines; i++) {
+    const v = y0 + ((y1 - y0) * i) / gridLines;
+    const y = Y(v).toFixed(1);
+    svg += `<line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="#2a2a2a" stroke-dasharray="3 4"/>`;
+    svg += `<text x="${padL - 6}" y="${(+y + 3).toFixed(1)}" font-size="9" fill="#6b6b6b" text-anchor="end">${fmtY(v)}</text>`;
+  }
+  if (y0 < 0) {
+    svg += `<line x1="${padL}" y1="${Y(0).toFixed(1)}" x2="${width - padR}" y2="${Y(0).toFixed(1)}" stroke="#6b6b6b" stroke-width="0.8"/>`;
+  }
+
+  const xAt = (p, i) => (type === 'bar' && spanBars) ? (barLeft(i) + X(p.x)) / 2 : X(p.x, i);
+  const nLabels = Math.min(points.length, 5);
+  const idxs = new Set();
+  for (let k = 0; k < nLabels; k++) idxs.add(Math.round((k * (points.length - 1)) / Math.max(1, nLabels - 1)));
+  for (const i of idxs) {
+    const p = points[i];
+    svg += `<text x="${xAt(p, i).toFixed(1)}" y="${height - 7}" font-size="9" fill="#6b6b6b" text-anchor="middle">${esc(p.label ?? '')}</text>`;
+  }
+
+  if (type === 'bar') {
+    points.forEach((p, i) => {
+      const yTop = Y(Math.max(0, p.y)), yBot = Y(Math.min(0, p.y));
+      let x, w;
+      if (spanBars) { x = barLeft(i); w = Math.max(1, X(p.x) - x - 1); } else { w = barW; x = X(p.x, i) - w / 2; }
+      const fill = p.y < 0 ? 'var(--negative)' : 'var(--accent)';
+      svg += `<rect x="${x.toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0.8, yBot - yTop).toFixed(1)}" rx="1.5" fill="${fill}"/>`;
+    });
+  } else {
+    const d = points.map((p, i) => (i ? 'L' : 'M') + X(p.x).toFixed(1) + ' ' + Y(p.y).toFixed(1)).join(' ');
+    const last = points[points.length - 1];
+    svg += `<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    svg += `<circle cx="${X(last.x).toFixed(1)}" cy="${Y(last.y).toFixed(1)}" r="3" fill="var(--accent)"/>`;
+  }
+  return `<svg class="line-chart stat-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${type} chart">${svg}</svg>`;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}

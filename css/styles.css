@@ -744,3 +744,132 @@ input[type=date].input, input[type=time].input, input[type=datetime-local].input
 
 .icon { display: inline-flex; line-height: 0; }
 .icon svg { display: block; }
+
+/* ---------- Tier 2: filter button dot + summary pill (brief 9) ---------- */
+
+.filter-btn { position: relative; }
+.filter-dot {
+  position: absolute;
+  top: 6px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-primary);
+}
+
+.filter-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--pad-x) 12px;
+}
+.filter-pill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+}
+.filter-pill-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.filter-pill-x {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+.filter-pill-x .icon svg { width: 16px; height: 16px; }
+
+.filter-section { padding: 12px 0 4px; border-bottom: 1px solid var(--border); }
+.filter-section .field-label { margin-bottom: 10px; }
+.filter-section .chip { padding: 7px 12px; font-size: 13.5px; }
+.filter-empty { color: var(--text-tertiary); font-size: 13.5px; padding: 2px 0 10px; }
+.filter-section .chips { padding-bottom: 10px; }
+.filter-actions { position: sticky; bottom: -20px; background: var(--bg-secondary); padding: 6px 0 4px; }
+
+/* ---------- Tier 2: Statistics (brief 5.9) ---------- */
+
+.stat-section { margin-bottom: 8px; }
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 72px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.stat-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.stat-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.stat-value {
+  font-size: 2rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.stat-row .chev { color: var(--text-tertiary); }
+.staking-toggle { padding-top: 2px; }
+
+/* ---------- Tier 2: stat detail (brief 5.10) ---------- */
+
+.topbar h1.topbar-title-sm {
+  font-size: 17px;
+  font-weight: 500;
+  text-align: center;
+  flex: 1;
+  padding: 0 8px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.stat-detail .filter-pill-row { padding-left: 0; padding-right: 0; }
+.stat-detail .segmented { padding-left: 0; padding-right: 0; }
+.stat-card { margin-top: 2px; }
+.stat-card-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.stat-card-top .lbl {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.stat-total { font-size: 3rem; }
+.chart-card { padding: 12px 8px 8px; margin-bottom: 14px; background: var(--bg-primary); }
+.chart-caption {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding-top: 4px;
+}
+.detail-toggles { display: flex; gap: 10px; }
+.detail-toggles .segmented { flex: 1; }
+.stat-row svg.chev { flex: none; width: 16px; height: 16px; }
+.filter-pill-x svg.icon { width: 16px; height: 16px; }
