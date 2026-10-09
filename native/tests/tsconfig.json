@@ -1,0 +1,8 @@
+{
+  // Tests and Node scripts run under Node (tsx), so they get Node types;
+  // the app program above deliberately does not, to keep Node globals out of RN code.
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "types": ["node"], "allowJs": true, "checkJs": false },
+  "include": ["./**/*.ts", "../scripts/**/*.ts", "../src/**/*.ts"],
+  "exclude": []
+}

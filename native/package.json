@@ -1,0 +1,47 @@
+{
+  "name": "poker-analytics-27-native",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.109.0",
+    "expo": "~57.0.27",
+    "expo-constants": "~57.0.21",
+    "expo-crypto": "~57.0.3",
+    "expo-linking": "~57.0.12",
+    "expo-router": "~57.0.25",
+    "expo-splash-screen": "~57.0.9",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
+    "react-native-url-polyfill": "^4.0.0",
+    "react-native-web": "^0.21.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "@types/react": "~19.2.2",
+    "@types/ws": "^8.18.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.2",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.3",
+    "ws": "^8.22.0"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tests",
+    "lint": "expo lint",
+    "test": "tsx --test tests/*.test.ts",
+    "test:tz": "TZ=UTC tsx --test tests/*.test.ts && TZ=Europe/Dublin tsx --test tests/*.test.ts && TZ=America/Los_Angeles tsx --test tests/*.test.ts",
+    "test:integration": "tsx scripts/integration-test.ts",
+    "export:web": "expo export --platform web"
+  },
+  "private": true
+}
