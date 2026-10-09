@@ -4,7 +4,7 @@
 // and gross = retained + backers. Works for live and ended tournaments.
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getSession } from '../../../src/lib/domain';
 import { fmtMoney, fmtNum, moneyTone } from '../../../src/lib/format';
@@ -51,11 +51,11 @@ export default function StakingScreen() {
         <View style={{ flexDirection: 'row', paddingHorizontal: PAD, paddingVertical: 12 }}>
           <View style={{ flex: 1 }}>
             <Text style={type.label}>Sold</Text>
-            <Text style={type.big}>{fmtNum(L.soldPct)}%</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[type.big, s2.half]}>{fmtNum(L.soldPct)}%</Text>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={type.label}>Your result</Text>
-            <Text style={[type.big, { color: toneColor(moneyTone(L.retained)) }]}>{fmtMoney(L.retained, cur)}</Text>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[type.big, s2.half, { color: toneColor(moneyTone(L.retained)) }]}>{fmtMoney(L.retained, cur)}</Text>
           </View>
         </View>
 
@@ -136,3 +136,6 @@ function SellSheet({ existing, left, onClose, onSave }: {
     </Sheet>
   );
 }
+
+// Two big numbers share one row at 390pt; keep each on one line.
+const s2 = StyleSheet.create({ half: { fontSize: 34 } });

@@ -3,7 +3,7 @@
 // bankroll with its current total, add bankroll / add transaction.
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { addBankroll, bankrollNameError, bankrollSummary } from '../../../src/lib/bankroll';
 import { fmtMoney, moneyTone } from '../../../src/lib/format';
@@ -43,13 +43,13 @@ export default function BankrollScreen() {
         <View style={{ flexDirection: 'row', paddingHorizontal: PAD, paddingBottom: 12 }}>
           <View style={{ flex: 1 }}>
             <Text style={type.label}>Total</Text>
-            <Text style={[type.big, { color: toneColor(moneyTone(all.total)) }]} accessibilityLabel={`Total ${fmtMoney(all.total, cur)}`}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[type.big, s2.half, { color: toneColor(moneyTone(all.total)) }]} accessibilityLabel={`Total ${fmtMoney(all.total, cur)}`}>
               {fmtMoney(all.total, cur)}
             </Text>
           </View>
           <View style={{ flex: 1, alignItems: 'flex-end' }}>
             <Text style={type.label}>Risk of ruin</Text>
-            <Text style={[type.big, { color: rorColor(all.ror) }]} accessibilityLabel={`Risk of ruin ${rorText(all.ror)}`}>
+            <Text numberOfLines={1} adjustsFontSizeToFit style={[type.big, s2.half, { color: rorColor(all.ror) }]} accessibilityLabel={`Risk of ruin ${rorText(all.ror)}`}>
               {rorText(all.ror)}
             </Text>
           </View>
@@ -82,3 +82,6 @@ export default function BankrollScreen() {
     </View>
   );
 }
+
+// Two big numbers share one row at 390pt; keep each on one line.
+const s2 = StyleSheet.create({ half: { fontSize: 34 } });
