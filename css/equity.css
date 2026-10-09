@@ -1,0 +1,210 @@
+/* Equity calculator (Tier 9). Loaded on demand by js/screens/equity.js; uses
+   the design tokens from styles.css. Sized for a 390px screen: five PLO5 hole
+   cards plus the equity figure fit in the 358px content width. */
+
+.eq-screen .segmented { padding-left: 0; padding-right: 0; }
+
+.eq-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 16px 0 8px;
+}
+
+.eq-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.eq-street { font-size: 13px; color: var(--text-tertiary); }
+
+/* ---------- cards ---------- */
+
+.eq-card {
+  position: relative;
+  width: 44px;
+  height: 60px;
+  flex: none;
+  border-radius: 8px;
+  background: #f4f4f4;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: transform 0.12s ease-out;
+}
+
+.eq-card:active { transform: scale(0.94); }
+.eq-card .eq-rank { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.eq-card .eq-pip { font-size: 18px; margin-top: 2px; }
+
+.eq-card-empty {
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border);
+  color: var(--text-tertiary);
+  font-size: 22px;
+  font-weight: 300;
+}
+
+/* Four-colour deck so suits read at a glance on a small screen. */
+.eq-suit-s { color: #111; }
+.eq-suit-h { color: #d93a3a; }
+.eq-suit-d { color: #2f6fdb; }
+.eq-suit-c { color: #1f8a4c; }
+
+.eq-board { display: flex; gap: 8px; }
+.eq-board .eq-card { width: 56px; height: 76px; }
+.eq-board .eq-card .eq-rank { font-size: 24px; }
+.eq-board .eq-card .eq-pip { font-size: 22px; }
+
+/* ---------- players ---------- */
+
+.eq-players { display: flex; flex-direction: column; gap: 10px; }
+
+.eq-player {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px 12px;
+}
+
+.eq-player-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.eq-player-name {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.eq-random {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.eq-remove {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  border-radius: 8px;
+}
+
+.eq-remove svg { width: 16px; height: 16px; }
+
+.eq-player-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.eq-cards { display: flex; gap: 6px; }
+/* PLO5 needs five cards beside the number: slightly narrower cards. */
+.eq-cards-5 { gap: 4px; }
+.eq-cards-5 .eq-card { width: 40px; height: 56px; }
+.eq-cards-5 .eq-card .eq-rank { font-size: 18px; }
+
+.eq-equity {
+  font-size: 2.4rem;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: opacity 0.15s;
+}
+
+/* Five 40px cards leave ~108px at 390 wide: size the figure so "100.0%" fits. */
+.eq-body-5 { gap: 4px; }
+.eq-body-5 .eq-equity { font-size: 1.7rem; }
+.eq-equity { min-width: 0; }
+
+.eq-equity.best { color: var(--accent); }
+.eq-equity.busy { opacity: 0.4; }
+.eq-pct { font-size: 0.5em; color: var(--text-secondary); margin-left: 1px; }
+.eq-dash { color: var(--text-tertiary); }
+
+.eq-bar {
+  display: flex;
+  height: 4px;
+  margin-top: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--negative);
+  opacity: 0.85;
+}
+
+.eq-bar-win { background: var(--accent); }
+.eq-bar-tie { background: var(--text-tertiary); }
+
+.eq-wtl {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.eq-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.eq-add svg { width: 18px; height: 18px; }
+
+.eq-meta {
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  text-align: center;
+  min-height: 18px;
+}
+
+.eq-meta.eq-error { color: var(--negative); }
+
+/* ---------- picker sheet ---------- */
+
+.eq-picker { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 4px; }
+.eq-picker-row { display: grid; grid-template-columns: repeat(13, 1fr); gap: 3px; }
+
+.eq-pick {
+  height: 44px;
+  border-radius: 6px;
+  background: #f4f4f4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+}
+
+.eq-pick .eq-rank { font-size: 14px; font-weight: 600; }
+.eq-pick .eq-pip { font-size: 12px; margin-top: 1px; }
+.eq-pick.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+.eq-pick:disabled { opacity: 0.18; cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .eq-card, .eq-equity { transition: none; }
+}
