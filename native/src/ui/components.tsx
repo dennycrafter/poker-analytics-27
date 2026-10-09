@@ -1,7 +1,7 @@
 // Shared UI primitives in the brief's design language (section 2):
 // rows, big stat rows, segmented control, buttons, text fields, bottom
 // sheets (value prompt + option picker) and a dependency-free SVG line chart.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
   type KeyboardTypeOptions, type StyleProp, type ViewStyle,
@@ -207,10 +207,13 @@ export interface PromptSpec {
 
 /** One text value in a bottom sheet. */
 export function PromptSheet({ spec, onClose }: { spec: PromptSpec | null; onClose: () => void }) {
-  const [raw, setRaw] = useState('');
+  return spec ? <PromptBody spec={spec} onClose={onClose} /> : null;
+}
+
+/** Mounted per opening (keyed by useSheets), so the field starts from spec.initial. */
+function PromptBody({ spec, onClose }: { spec: PromptSpec; onClose: () => void }) {
+  const [raw, setRaw] = useState(spec.initial);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { setRaw(spec?.initial ?? ''); setError(null); }, [spec]);
-  if (!spec) return null;
   const save = () => {
     const err = spec.onSave(raw);
     if (err) setError(err); else onClose();
@@ -242,9 +245,11 @@ export interface PickSpec {
 
 /** Option list in a bottom sheet, with optional "add new". */
 export function PickSheet({ spec, onClose }: { spec: PickSpec | null; onClose: () => void }) {
+  return spec ? <PickBody spec={spec} onClose={onClose} /> : null;
+}
+
+function PickBody({ spec, onClose }: { spec: PickSpec; onClose: () => void }) {
   const [name, setName] = useState('');
-  useEffect(() => { setName(''); }, [spec]);
-  if (!spec) return null;
   return (
     <Sheet visible title={spec.title} onClose={onClose}>
       <ScrollView style={{ maxHeight: 360 }}>
@@ -329,12 +334,15 @@ const s = StyleSheet.create({
 
 /** Prompt + pick sheet state for a screen: call prompt(spec) / pick(spec), render `sheets`. */
 export function useSheets() {
-  const [promptSpec, prompt] = useState<PromptSpec | null>(null);
-  const [pickSpec, pick] = useState<PickSpec | null>(null);
+  // seq changes on every open, remounting the sheet body so its inputs reset.
+  const [promptState, setPrompt] = useState<{ spec: PromptSpec; seq: number } | null>(null);
+  const [pickState, setPick] = useState<{ spec: PickSpec; seq: number } | null>(null);
+  const prompt = (spec: PromptSpec | null) => setPrompt(p => (spec ? { spec, seq: (p?.seq ?? 0) + 1 } : null));
+  const pick = (spec: PickSpec | null) => setPick(p => (spec ? { spec, seq: (p?.seq ?? 0) + 1 } : null));
   const sheets = (
     <>
-      <PromptSheet spec={promptSpec} onClose={() => prompt(null)} />
-      <PickSheet spec={pickSpec} onClose={() => pick(null)} />
+      <PromptSheet key={`prompt${promptState?.seq ?? 0}`} spec={promptState?.spec ?? null} onClose={() => prompt(null)} />
+      <PickSheet key={`pick${pickState?.seq ?? 0}`} spec={pickState?.spec ?? null} onClose={() => pick(null)} />
     </>
   );
   return { prompt, pick, sheets };

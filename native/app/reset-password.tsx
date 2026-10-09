@@ -13,10 +13,11 @@ import { colors } from '../src/ui/theme';
 export default function ResetPasswordLink() {
   const { code, error_description: linkError } = useLocalSearchParams<{ code?: string; error_description?: string }>();
   const { setRecovering } = useAuth();
-  const [error, setError] = useState<string | null>(linkError ?? null);
+  const [exchangeError, setError] = useState<string | null>(null);
+  const error = linkError ?? exchangeError ?? (code ? null : 'This reset link is incomplete. Request a new one.');
 
   useEffect(() => {
-    if (!code) { if (!linkError) setError('This reset link is incomplete. Request a new one.'); return; }
+    if (!code || linkError) return;
     let alive = true;
     supabase.auth.exchangeCodeForSession(code).then(({ error: err }) => {
       if (!alive) return;

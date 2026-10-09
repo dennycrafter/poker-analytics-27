@@ -125,6 +125,7 @@ function RecordSheet({ visible, startMs, endMs, onClose, onSave }: {
   const [amount, setAmount] = useState('');
   const [time, setTime] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const now = useNow(30000);
   const submit = () => {
     const v = parseAmount(amount);
     if (v === null || v <= 0) { setError('Enter an amount above zero.'); return; }
@@ -140,7 +141,7 @@ function RecordSheet({ visible, startMs, endMs, onClose, onSave }: {
     <Sheet visible={visible} title="Record stack change" onClose={onClose}>
       <Segmented<ChangeKind> options={[{ id: 'top_up', label: 'Top up' }, { id: 'cash_out', label: 'Cash out' }]} value={kind} onChange={setKind} />
       <Field label="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" autoFocus />
-      <Field label="Time (empty = now)" value={time} onChangeText={setTime} placeholder={toLocalInput(new Date(endMs ?? Date.now()))} />
+      <Field label="Time (empty = now)" value={time} onChangeText={setTime} placeholder={toLocalInput(new Date(endMs ?? now))} />
       <ErrorText text={error} />
       <Button label="Save" onPress={submit} style={{ marginHorizontal: PAD, marginTop: 8 }} />
     </Sheet>

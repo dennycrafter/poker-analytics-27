@@ -12,7 +12,7 @@ import {
 } from '../../../src/lib/metrics';
 import { inRange, isRangeId } from '../../../src/lib/range';
 import { endedSessions } from '../../../src/lib/stats';
-import { useDoc } from '../../../src/state/AppProvider';
+import { useDoc, useNow } from '../../../src/state/AppProvider';
 import { useStakingMode } from '../../../src/state/prefs';
 import { BarChart, Empty, Header, HeaderButton, LineChart, Segmented } from '../../../src/ui/components';
 import { colors, PAD, toneColor, type } from '../../../src/ui/theme';
@@ -30,6 +30,7 @@ export default function StatDetailScreen() {
   const doc = useDoc();
   const { width } = useWindowDimensions();
   const [mode] = useStakingMode();
+  const now = useNow(60000);
   const [group, setGroup] = useState<SeriesGroup>('unit');
   const [chart, setChart] = useState<ChartKind>('line');
   const [bb, setBb] = useState(false);
@@ -43,7 +44,7 @@ export default function StatDetailScreen() {
   const twin = scope === 'cash' ? BB_TWIN[params.metric] : undefined;
   const id: MetricId = bb && twin ? twin : params.metric;
   const def = metricDef(id);
-  const sessions = SCOPES[scope].pick(inRange(endedSessions(doc), range, Date.now()));
+  const sessions = SCOPES[scope].pick(inRange(endedSessions(doc), range, now));
   const total = metricValue(doc, id, sessions, mode);
   const points = buildSeries(doc, id, sessions, { group, chart, mode });
   const chartWidth = Math.min(width, 520) - PAD * 2;

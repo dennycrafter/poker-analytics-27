@@ -10,7 +10,7 @@ import { fmtMetric, metricDef, metricTone, metricValue, SCOPES, SECTIONS, type S
 import { inRange, RANGES, type RangeId } from '../../../src/lib/range';
 import { endedSessions, hasStaking } from '../../../src/lib/stats';
 import type { StakingMode } from '../../../src/lib/types';
-import { useDoc } from '../../../src/state/AppProvider';
+import { useDoc, useNow } from '../../../src/state/AppProvider';
 import { useStakingMode } from '../../../src/state/prefs';
 import { BigStatRow, Chips, Empty, Header, SectionHeader, Segmented } from '../../../src/ui/components';
 import { LiveBanner } from '../../../src/ui/LiveBanner';
@@ -22,8 +22,8 @@ export default function StatsScreen() {
   const doc = useDoc();
   const [range, setRange] = useState<RangeId>('all');
   const [mode, setMode] = useStakingMode();
-  // Range is evaluated when the tab renders; minute-level drift is irrelevant here.
-  const sessions = useMemo(() => inRange(endedSessions(doc), range, Date.now()), [doc, range]);
+  const now = useNow(60000);
+  const sessions = useMemo(() => inRange(endedSessions(doc), range, now), [doc, range, now]);
   const staked = sessions.some(s => hasStaking(doc, s));
 
   return (

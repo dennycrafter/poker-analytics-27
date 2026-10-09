@@ -1,7 +1,7 @@
 // Feed row (brief 5.1): weekday/day column, title, duration/table/location
 // line, net result on the right, pulsing LIVE badge for the running session.
 import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { dayNum, fmtDur, fmtMoney, moneyTone, weekdayAbbr } from '../lib/format';
@@ -12,7 +12,7 @@ import { Icon } from './icons';
 import { colors, PAD, toneColor, type } from './theme';
 
 export function LiveBadge() {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const [pulse] = useState(() => new Animated.Value(1));
   useEffect(() => {
     const loop = Animated.loop(Animated.sequence([
       Animated.timing(pulse, { toValue: 0.35, duration: 700, useNativeDriver: true }),

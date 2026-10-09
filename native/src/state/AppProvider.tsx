@@ -31,7 +31,7 @@ const AuthContext = createContext<AuthState | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null | undefined>(undefined);
   const [recovering, setRecovering] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadFailure, setLoadFailure] = useState<{ uid: string; attempt: number; message: string } | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -49,7 +49,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const uid = session?.user.id ?? null;
   useEffect(() => {
-    setLoadError(null);
     if (!uid) {
       void store.stop().catch(e => console.error('sync: stop failed', e));
       return;
@@ -58,7 +57,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const run = attempt > 0 ? store.stop().then(() => store.start(uid)) : store.start(uid);
     run.catch(e => {
       console.error('sync: start failed', e);
-      setLoadError(String((e as { message?: string } | null)?.message ?? e));
+      setLoadFailure({ uid, attempt, message: String((e as { message?: string } | null)?.message ?? e) });
     });
   }, [uid, attempt]);
 
@@ -69,6 +68,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     return () => sub.remove();
   }, []);
+
+  const loadError = loadFailure && loadFailure.uid === uid && loadFailure.attempt === attempt ? loadFailure.message : null;
 
   const value = useMemo<AuthState>(() => ({
     session, recovering, setRecovering, loadError,
