@@ -24,6 +24,8 @@ export function toast(msg) {
 
 let currentSheet = null;
 
+export function isSheetOpen() { return currentSheet !== null; }
+
 // Close any open sheet; called on every route change so navigation always
 // dismisses overlays (a sheet must never survive a route render).
 export function closeSheets() {

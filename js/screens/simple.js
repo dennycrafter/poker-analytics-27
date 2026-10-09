@@ -6,7 +6,8 @@
 import { navigate } from '../router.js';
 import { getState } from '../store.js';
 import { icon } from '../icons.js';
-import { esc, toast } from '../ui.js';
+import { esc, toast, confirmSheet } from '../ui.js';
+import { currentUser, signOut } from '../account.js';
 import { fmtDateShort, fmtClock } from '../format.js';
 
 const EMPTY = {
@@ -48,12 +49,38 @@ export function MoreScreen(root) {
             <span class="field-value">${r.soon ? '<span class="hint">coming soon</span>' : ''}${icon('chevron', 'chev')}</span>
           </div>`).join('')}
       </div>
+      <div class="section-label account-label">Account</div>
+      <div class="rows">
+        <div class="field-row" data-row="account">
+          <span class="field-name">Signed in as</span>
+          <span class="field-value" data-role="email">…</span>
+        </div>
+      </div>
+      <button class="btn-danger" data-act="signout">Sign out</button>
     </div>`;
   for (const r of rows) {
     root.querySelector(`[data-row="${r.label}"]`).addEventListener('click', () => {
       toast(`${r.label} arrives in a later update`);
     });
   }
+  currentUser()
+    .then(u => {
+      const el = root.querySelector('[data-role=email]');
+      if (el) el.textContent = u ? u.email : '--';
+    })
+    .catch(e => console.error('more: could not read account', e));
+  root.querySelector('[data-act=signout]').addEventListener('click', () => {
+    confirmSheet({
+      title: 'Sign out?',
+      message: 'Your data stays in your account. Sign in again on any device to see it.',
+      confirmLabel: 'Sign out',
+      danger: true,
+      onConfirm: async () => {
+        const err = await signOut();
+        if (err) toast(err);
+      },
+    });
+  });
 }
 
 // Read-only views reachable from the Feed HANDS / NOTES tabs.

@@ -4,8 +4,9 @@ A mobile-first poker session tracker web app: log live or past cash-game and
 tournament sessions, track your stack event by event during live play, and see
 month-grouped results with correct net/hourly math.
 
-Dark mode only. No build step, no dependencies — vanilla ES modules, hand-rolled
-SVG charts, data stored in your browser (localStorage) with JSON export/import.
+Dark mode only. No build step — vanilla ES modules, hand-rolled SVG charts.
+Data lives in your Supabase account and syncs across devices in real time
+(see Backend).
 
 ## Run locally
 
@@ -29,9 +30,9 @@ python3 -m http.server 8080
 - Stack screen (live cash): stack events (buy-in / top-up / cash-out),
   cumulative result chart, reverse-chronological event list.
 - Session detail: every row editable, red delete.
-- Statistics / Calendar / Reports / More are placeholders until later tiers.
-- Demo data: ~40 realistic seeded sessions over the last 5 months
-  (deterministic; Settings → Reset demo data restores them in later tiers).
+- Statistics (Tier 2): every formula, stat detail charts, per-tab Filter sheet.
+- New accounts start empty (default games/locations/bankroll, no demo
+  sessions); `js/seed.js` is kept only for tests and legacy migration checks.
 
 ## Architecture
 
@@ -41,8 +42,14 @@ css/styles.css      design system (brief section 2)
 js/
   main.js           shell: tab bar, live banner, routing + 1s tick wiring
   router.js         hash-based router (#/feed, #/live/:id, #/session/:id, ...)
-  store.js          versioned localStorage document + pub/sub mutations
-  seed.js           deterministic demo data (seeded PRNG)
+  store.js          in-memory document + pub/sub; syncs to Supabase (see Backend)
+  cloud-map.js      pure document <-> database row mapping, legacy migration
+  config.js         Supabase URL + publishable key (public by design)
+  supabase-client.js shared Supabase client
+  account.js        sign-out
+  vendor/supabase.js vendored supabase-js v2.109.0 (ESM, no runtime CDN)
+  screens/auth.js   log in / sign up / forgot + set new password
+  seed.js           deterministic demo data (no longer loaded by the app)
   domain.js         all mutations (start/end/log/update/delete, stack events)
   stats.js          derived values computed on read (net, hours, rate, BB)
   format.js         money/time/date formatting helpers
@@ -54,6 +61,37 @@ js/
   charts/svg.js     dependency-free SVG line chart
   screens/          feed, start, live, stack, detail, simple (placeholders)
 ```
+
+## Backend
+
+- **Stack:** Supabase (Postgres, Auth, Realtime), project
+  `assutwkylxjncaqhbjtv`. Schema: `supabase/migrations/20261009120000_step_a_backend.sql`
+  — tables `sessions`, `bankroll_transactions`, `user_settings`.
+- **Data model:** a `sessions` row carries every session field plus its stack
+  events and sell actions as jsonb. `user_settings` holds per-user master data
+  (bankrolls, locations, games, tournament types, groups), currency, player
+  notes and hand histories. UI preferences (filters, staking toggle) stay
+  local per device.
+- **Auth:** email + password via Supabase Auth. Email confirmation is off
+  (`mailer_autoconfirm`), so sign-up is instant. "Forgot password" sends a
+  reset link that opens the app's set-new-password screen.
+- **Security:** row level security on every table; each policy is
+  `auth.uid() = user_id` and `user_id` defaults to `auth.uid()`.
+- **Sync:** screens read a synchronous in-memory document. Writes apply
+  optimistically, then a diff of changed entities is upserted/deleted.
+  Realtime `postgres_changes` pushes other devices' writes within about a
+  second; a full pull runs on sign-in, reconnect and tab focus. Last write
+  wins. A per-user localStorage cache paints instantly and is cleared on sign-out.
+  Live timers are computed from `start_time`/pauses in the row, so they match on
+  every device. A write the server rejects is rolled back and surfaced as a toast.
+- **Legacy data:** if this browser has pre-backend localStorage data and the
+  account is empty, the app offers a one-tap "Migrate local data".
+- **Keys:** only the project URL and the *publishable* key live in the repo
+  (`js/config.js`); they are safe in browsers because of RLS. The service_role
+  key and management tokens are never committed.
+- **Applying the schema:** run the migration SQL in the Supabase SQL editor (or
+  `supabase db push`). It also creates the RLS policies and `updated_at`
+  triggers, and adds the tables to the `supabase_realtime` publication.
 
 Buy-in single source of truth: live-tracked cash sessions derive buy-in from
 stack events (`tracked_via_stack = true`); past sessions store it directly.
