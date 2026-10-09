@@ -149,7 +149,7 @@ function compact(v) {
   const a = Math.abs(v);
   if (a >= 1e6) return fmtNum(v / 1e6) + 'M';
   if (a >= 1e3) return fmtNum(Math.round(v / 100) / 10) + 'k';
-  return fmtNum(v);
+  return fmtNum(Math.round(v));
 }
 
 function downswingChart(result) {
@@ -195,8 +195,10 @@ function statRow(label, valueHtml, hint = '') {
   </div>`;
 }
 
+// Whole units: percentile cells are a third of 358px and cents are noise
+// in a Monte Carlo estimate anyway.
 function money(v, cur) {
-  return `<span class="${v < 0 ? 'neg' : ''}">${esc(fmtMoney(v, cur))}</span>`;
+  return `<span class="${v < 0 ? 'neg' : ''}">${esc(fmtMoney(Math.round(v), cur))}</span>`;
 }
 
 function resultsHtml(r, cur) {
@@ -225,13 +227,13 @@ function resultsHtml(r, cur) {
             <div><span class="vs-q">Median</span><span class="vs-qv">${money(f.p50, cur)}</span></div>
             <div><span class="vs-q">Best 5%</span><span class="vs-qv">${money(f.p95, cur)}</span></div>
           </div>
-          <span class="hint">Expected ${esc(fmtMoney(r.params.bankroll + a.expectedNet, cur))} · SD ${esc(fmtMoney(a.sdNet, cur))} (σ√N)</span>
+          <span class="hint">Expected ${esc(fmtMoney(Math.round(r.params.bankroll + a.expectedNet), cur))} · SD ${esc(fmtMoney(Math.round(a.sdNet), cur))} (σ√N)</span>
         </div>
       </div>
       ${statRow(`Chance of being down after ${fmtNum(n)} ${unit}`, `<span class="${rorClass(r.probDown)}">${fmtPct(r.probDown)}</span>`,
         mid ? `After ${esc(fmtNum(mid.unit))} ${esc(unit)}: ${fmtPct(mid.p)}` : '')}
-      ${statRow('Max downswing (median)', esc(fmtMoney(r.maxDownswing.p50, cur)),
-        `Worst 5% of runs: ${esc(fmtMoney(r.maxDownswing.p95, cur))} or more · ${esc(fmtNum(r.maxDownswing.p50 / Math.max(1e-9, Math.abs(a.meanPerUnit))))} ${per}s of EV`)}
+      ${statRow('Max downswing (median)', esc(fmtMoney(Math.round(r.maxDownswing.p50), cur)),
+        `Worst 5% of runs: ${esc(fmtMoney(Math.round(r.maxDownswing.p95), cur))} or more · ${esc(fmtNum(Math.round(r.maxDownswing.p50 / Math.max(1e-9, Math.abs(a.meanPerUnit)))))} ${per}s of EV`)}
     </div>
     <div class="section-label vs-section">Max downswing distribution</div>
     <div class="chart-card vs-chart">${downswingChart(r)}
