@@ -1116,6 +1116,11 @@ button.hm-cell:focus-visible, .hm-cell.sel { outline: 2px solid var(--text-prima
   border-radius: 8px;
 }
 
+/* The 28px entrance slide must not widen the document (a horizontal scrollbar
+   flashed mid-transition). clip, unlike hidden, creates no scroll container,
+   so sticky headers and fixed modal screens are unaffected. */
+#screen { overflow-x: clip; }
+
 /* Route transitions. Applied to the screen element (never #screen, whose
    transform would re-anchor the fixed modal screens) and removed on end. */
 .route-enter { animation-duration: 0.22s; animation-timing-function: cubic-bezier(0.2, 0.7, 0.2, 1); animation-fill-mode: both; }
