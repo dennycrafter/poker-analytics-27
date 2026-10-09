@@ -7,7 +7,9 @@ import { StartScreen } from './screens/start.js';
 import { LiveScreen } from './screens/live.js';
 import { StackScreen } from './screens/stack.js';
 import { DetailScreen } from './screens/detail.js';
-import { CalendarScreen, ReportsScreen, MoreScreen, HandView, NoteView } from './screens/simple.js';
+import { MoreScreen, HandView, NoteView } from './screens/simple.js';
+import { CalendarScreen, CalendarGridScreen } from './screens/calendar.js';
+import { ReportsScreen, ReportDetailScreen } from './screens/reports.js';
 import { StatsScreen, StatDetailScreen } from './screens/stats.js';
 import { closeSheets } from './ui.js';
 
@@ -16,7 +18,9 @@ const ROUTES = [
   { re: /^\/stats$/, tab: 'stats', render: (r, d) => StatsScreen(r, d) },
   { re: /^\/stats\/(all|cash|tournament)\/([a-z0-9_]+)$/, tab: 'stats', render: (r, d, m) => StatDetailScreen(r, d, m[1], m[2]) },
   { re: /^\/calendar$/, tab: 'calendar', render: (r, d) => CalendarScreen(r, d) },
+  { re: /^\/calendar\/grid$/, tab: 'calendar', render: (r, d) => CalendarGridScreen(r, d) },
   { re: /^\/reports$/, tab: 'reports', render: (r, d) => ReportsScreen(r, d) },
+  { re: /^\/reports\/([a-z]+)$/, tab: 'reports', render: (r, d, m) => ReportDetailScreen(r, d, m[1]) },
   { re: /^\/more$/, tab: 'more', render: (r, d) => MoreScreen(r, d) },
   { re: /^\/new\/(cash|tournament)$/, tab: 'feed', render: (r, d, m) => StartScreen(r, d, m[1]) },
   { re: /^\/live\/([A-Za-z0-9-]+)\/stack$/, tab: 'feed', render: (r, d, m) => StackScreen(r, d, m[1]) },

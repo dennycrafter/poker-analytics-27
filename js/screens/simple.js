@@ -1,5 +1,4 @@
-// Screens not built yet: Calendar /
-// Reports show their section-8 empty states, More lists its rows with
+// Screens not built yet: More lists its rows with
 // "coming soon" behavior, and HandView / NoteView give seeded hand
 // histories and player notes a basic read view (full management in Tier 4).
 
@@ -9,24 +8,6 @@ import { icon } from '../icons.js';
 import { esc, toast, confirmSheet } from '../ui.js';
 import { currentUser, signOut } from '../account.js';
 import { fmtDateShort, fmtClock } from '../format.js';
-
-const EMPTY = {
-  '/calendar': 'Play a session to see your stats.',
-  '/reports': 'Log at least 5 sessions to unlock reports.',
-};
-
-function emptyTabHtml(title, path) {
-  return `
-    <header class="topbar">
-      <span class="topbtn" style="visibility:hidden"></span>
-      <h1>${title}</h1>
-      <span class="topbtn" style="visibility:hidden"></span>
-    </header>
-    <div class="empty-state">${esc(EMPTY[path] || 'Nothing here yet.')}</div>`;
-}
-
-export function CalendarScreen(root, doc) { root.innerHTML = `<div class="screen">${emptyTabHtml('Calendar', '/calendar')}</div>`; }
-export function ReportsScreen(root, doc) { root.innerHTML = `<div class="screen">${emptyTabHtml('Reports', '/reports')}</div>`; }
 
 export function MoreScreen(root) {
   const rows = [

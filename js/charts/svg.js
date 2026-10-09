@@ -42,14 +42,8 @@ export function seriesChart({ points, type = 'line', width = 340, height = 200, 
   }
   const padL = 40, padR = 10, padT = 12, padB = 24;
   const xs = points.map(p => p.x), ys = points.map(p => p.y);
-  let y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys);
-  if (y1 === y0) { y1 += 1; y0 -= y0 === 0 ? 0 : 1; }
-  // Round-number gridlines: pick a 1/2/2.5/5 x 10^n step, snap bounds to it.
-  const raw = (y1 - y0) / gridLines;
-  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(v => v >= raw) || 10 * mag;
-  y0 = Math.floor(y0 / step) * step; y1 = Math.ceil(y1 / step) * step;
-  gridLines = Math.max(1, Math.round((y1 - y0) / step));
+  let y0, y1;
+  ({ y0, y1, gridLines } = niceScale(ys, gridLines));
   const innerW = width - padL - padR, innerH = height - padT - padB;
   const Y = v => padT + innerH - ((v - y0) / (y1 - y0)) * innerH;
   let X, barW = 0, barLeft = null;
@@ -108,4 +102,57 @@ export function seriesChart({ points, type = 'line', width = 340, height = 200, 
 
 function esc(s) {
   return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// Y range always including 0, snapped to a round 1/2/2.5/5 x 10^n step.
+// Shared by seriesChart and barChart so both render identical gridlines.
+export function niceScale(ys, gridLines = 4) {
+  let y0 = Math.min(0, ...ys), y1 = Math.max(0, ...ys);
+  if (y1 === y0) { y1 += 1; y0 -= y0 === 0 ? 0 : 1; }
+  const raw = (y1 - y0) / gridLines;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(v => v >= raw) || 10 * mag;
+  y0 = Math.floor(y0 / step) * step; y1 = Math.ceil(y1 / step) * step;
+  return { y0, y1, gridLines: Math.max(1, Math.round((y1 - y0) / step)) };
+}
+
+// Category bar chart (Reports drill-downs, brief 5.13): one bar per bucket,
+// same palette/gridlines as seriesChart. bars: [{key, label, y, empty?}].
+// Each bar group is a focusable <g data-key> so screens can wire taps.
+// `selected` highlights one key; `labelEvery` thins x labels (e.g. 3 for 24h).
+export function barChart({ bars, width = 340, height = 210, fmtY = fmtNum, selected = null, labelEvery = 1, gridLines = 4, ariaLabel = 'bar chart' }) {
+  if (!bars || !bars.length) return '<div class="chart-empty">Not enough data yet</div>';
+  const padL = 40, padR = 8, padT = 12, padB = 24;
+  const ys = bars.map(b => (Number.isFinite(b.y) ? b.y : 0));
+  const sc = niceScale(ys, gridLines);
+  const { y0, y1 } = sc;
+  const innerW = width - padL - padR, innerH = height - padT - padB;
+  const Y = v => padT + innerH - ((v - y0) / (y1 - y0)) * innerH;
+  const slot = innerW / bars.length;
+  const w = Math.max(2, slot * 0.68);
+  let svg = '';
+  for (let i = 0; i <= sc.gridLines; i++) {
+    const v = y0 + ((y1 - y0) * i) / sc.gridLines;
+    const y = Y(v).toFixed(1);
+    svg += `<line x1="${padL}" y1="${y}" x2="${width - padR}" y2="${y}" stroke="#2a2a2a" stroke-dasharray="3 4"/>`;
+    svg += `<text x="${padL - 6}" y="${(+y + 3).toFixed(1)}" font-size="9" fill="#6b6b6b" text-anchor="end">${esc(fmtY(v))}</text>`;
+  }
+  if (y0 < 0) {
+    svg += `<line x1="${padL}" y1="${Y(0).toFixed(1)}" x2="${width - padR}" y2="${Y(0).toFixed(1)}" stroke="#6b6b6b" stroke-width="0.8"/>`;
+  }
+  bars.forEach((b, i) => {
+    const cx = padL + slot * i + slot / 2;
+    const v = ys[i];
+    const yTop = Y(Math.max(0, v)), yBot = Y(Math.min(0, v));
+    const fill = b.empty ? '#2a2a2a' : v < 0 ? 'var(--negative)' : 'var(--accent)';
+    const sel = selected !== null && String(b.key) === String(selected);
+    const dim = selected !== null && !sel ? ' opacity="0.45"' : '';
+    svg += `<g class="bar" data-key="${esc(b.key)}" tabindex="${b.empty ? -1 : 0}" role="button" aria-label="${esc(b.label)}: ${esc(fmtY(v))}"${dim}>` +
+      `<rect x="${(cx - slot / 2).toFixed(1)}" y="${padT}" width="${slot.toFixed(1)}" height="${innerH}" fill="transparent"/>` +
+      `<rect x="${(cx - w / 2).toFixed(1)}" y="${yTop.toFixed(1)}" width="${w.toFixed(1)}" height="${Math.max(0.8, yBot - yTop).toFixed(1)}" rx="1.5" fill="${fill}"${sel ? ' stroke="#fff" stroke-width="1"' : ''}/></g>`;
+    if (i % labelEvery === 0) {
+      svg += `<text x="${cx.toFixed(1)}" y="${height - 7}" font-size="9" fill="#6b6b6b" text-anchor="middle">${esc(b.short ?? b.label)}</text>`;
+    }
+  });
+  return `<svg class="line-chart stat-chart bar-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(ariaLabel)}">${svg}</svg>`;
 }

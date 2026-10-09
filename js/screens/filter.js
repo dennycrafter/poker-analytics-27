@@ -5,7 +5,8 @@
 import { getState } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, openSheet } from '../ui.js';
-import { RANGES, emptyFilter, getFilter, setFilter, clearFilter, isActive, summary, stakesOptions } from '../filters.js';
+import { RANGES, emptyFilter, getFilter, setFilter, clearFilter, isActive, summary, stakesOptions, hasHour } from '../filters.js';
+import { hourRangeLabel } from '../hours.js';
 import { localInputValue } from '../dates.js';
 
 // Filter button with the green "active" dot.
@@ -79,6 +80,8 @@ export function openFilterSheet(tab) {
         ${multi('bankroll_ids', 'bankroll_ids', doc.bankrolls, 'No bankrolls yet')}</div>
       <div class="filter-section"><div class="field-label">Group</div>
         ${multi('group_ids', 'group_ids', doc.groups || [], 'No groups yet')}</div>
+      ${hasHour(draft) ? `<div class="filter-section"><div class="field-label">Hour of day (from Reports)</div>
+        <div class="chips">${chip('hour', 'clear', hourRangeLabel(draft.hour) + '  ×', true)}</div></div>` : ''}
       <div class="sheet-error" data-role="err" hidden></div>
       <div class="sheet-actions filter-actions">
         <button class="btn-secondary" data-act="clear">Clear all</button>
@@ -100,6 +103,8 @@ export function openFilterSheet(tab) {
             if (v !== 'custom') { draft.from = null; draft.to = null; }
           } else if (g === 'kind') {
             draft.kind = v;
+          } else if (g === 'hour') {
+            draft.hour = null; // only removable here; set by Reports drill-down
           } else {
             const arr = draft[g];
             const i = arr.indexOf(v);

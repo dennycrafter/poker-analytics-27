@@ -37,8 +37,42 @@ const M = {
   avg_buyin: { label: 'Average buy-in', unit: 'money', signless: true, value: (d, l) => S.avgBuyIn(d, l) },
   roi: { label: 'ROI', unit: 'pct', value: (d, l) => S.roi(d, l) },
   itm: { label: 'ITM ratio', unit: 'pct', value: (d, l) => S.itmRatio(d, l) },
+  // Calendar-only metrics (brief 5.11), formulas 13-17.
+  best_net: { label: 'Best net result', unit: 'money', staking: true, value: (d, l, m) => S.bestNet(d, l, m) },
+  locations: { label: 'Locations played', unit: 'count', value: (d, l) => l.length ? S.locationsPlayed(l) : null },
+  days: { label: 'Days played', unit: 'count', value: (d, l) => l.length ? S.daysPlayed(l) : null },
+  max_duration: { label: 'Max net duration', unit: 'hours', value: (d, l) => S.maxDuration(l) },
+  streaks: { label: 'Longest streaks', unit: 'streak', staking: true,
+    value: (d, l, m) => l.length ? S.longestStreaks(d, l, m) : null },
 };
 export const METRICS = M;
+
+// Calendar metric tabs (brief 5.11), in the brief's order. Each points at a
+// registry entry above so Calendar and Statistics share one implementation.
+// `scope` mirrors where the Statistics tab computes the same metric: std dev
+// per hour is a cash formula (#6), so Calendar runs it on the period's cash
+// sessions, exactly as the Statistics Cash section does.
+export const CALENDAR_METRICS = [
+  { id: 'net', scope: 'all' },
+  { id: 'hourly', scope: 'all' },
+  { id: 'records', scope: 'all' },
+  { id: 'win_ratio', scope: 'all' },
+  { id: 'stddev', scope: 'cash' },
+  { id: 'avg_net', scope: 'all' },
+  { id: 'avg_duration', scope: 'all' },
+  { id: 'duration', scope: 'all' },
+  { id: 'hands', scope: 'all' },
+  { id: 'best_net', scope: 'all' },
+  { id: 'locations', scope: 'all' },
+  { id: 'days', scope: 'all' },
+  { id: 'max_duration', scope: 'all' },
+  { id: 'streaks', scope: 'all' },
+];
+
+// Value of a calendar metric over one period's ended sessions.
+export function calendarValue(doc, cm, sessions, mode = 'net') {
+  return M[cm.id].value(doc, SCOPES[cm.scope].pick(sessions), mode);
+}
 
 // Exactly the rows listed in brief 5.9, in order.
 export const SECTIONS = {
@@ -54,6 +88,7 @@ export function metricValue(doc, metricId, sessions, mode = 'net') {
 
 // Display string for a metric value. `currency` for money units.
 export function fmtMetric(def, v, currency) {
+  if (def.unit === 'streak') return v ? `${v.wins}w / ${v.losses}l` : '--';
   if (v === null || v === undefined || !Number.isFinite(v)) return '--';
   switch (def.unit) {
     case 'money': return fmtMoney(v, currency);
@@ -70,6 +105,7 @@ export function fmtMetric(def, v, currency) {
 // Colour class: results green/red; neutral metrics (counts, durations, std
 // dev, buy-ins, ratios) stay white.
 export function metricClass(def, v) {
+  if (def.unit === 'streak') return '';
   if (v === null || !Number.isFinite(v) || def.signless) return '';
   if (['money', 'rate', 'bb', 'bbrate', 'bb100'].includes(def.unit) || def === M.roi) {
     return v > 0 ? 'pos' : v < 0 ? 'neg' : '';

@@ -918,3 +918,122 @@ input[type=date].input, input[type=time].input, input[type=datetime-local].input
 .auth-foot { margin-top: auto; padding-top: 40px; text-align: center; color: var(--text-tertiary); font-size: 13px; }
 
 .account-label { margin-top: 28px; }
+
+/* ---------- Tier 3: Calendar (brief 5.11) ---------- */
+
+.cal-pills { padding-top: 2px; }
+.metric-tabs {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 2px var(--pad-x) 0;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+.metric-tabs::-webkit-scrollbar { display: none; }
+.metric-tab {
+  flex: none;
+  padding: 10px 0 9px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  border-bottom: 2px solid transparent;
+}
+.metric-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.cal-note { padding: 8px var(--pad-x) 0; color: var(--text-tertiary); font-size: 12px; }
+.cal-row, .rep-bucket {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.cal-row.disabled { cursor: default; }
+.cal-label { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 16px; }
+.cal-sub { font-size: 12.5px; color: var(--text-tertiary); }
+.cal-value {
+  font-size: 22px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cal-row .chev, .rep-head .chev { color: var(--text-tertiary); }
+.cal-row svg.chev, .rep-head svg.chev { flex: none; width: 16px; height: 16px; }
+.chev-space { width: 16px; flex: none; }
+.cal-head-val { font-size: 13px; letter-spacing: 0; text-transform: none; }
+
+/* ---------- Tier 3: heatmap grid (brief 5.12) ---------- */
+
+.hm-legend { display: flex; gap: 14px; padding: 0 0 10px; font-size: 12px; color: var(--text-secondary); }
+.hm-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.hm-legend .hm-cell { width: 12px; height: 12px; display: inline-block; }
+.hm-info {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 64px; padding: 10px 14px; margin-bottom: 8px;
+  background: var(--bg-secondary); border-radius: 12px;
+}
+.hm-info.hint { justify-content: center; }
+.hm-info-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.hm-info-main .lbl { font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); }
+.hm-info-val { font-size: 1.8rem; font-weight: 300; font-variant-numeric: tabular-nums; }
+.hm-open { width: auto; margin: 0; padding: 10px 12px; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.hm-open svg { width: 14px; height: 14px; }
+.hm-months { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; padding-bottom: 24px; }
+.hm-month-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 4px 0 6px; font-size: 12px; font-weight: 500; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--accent);
+}
+.hm-month-head span:last-child { letter-spacing: 0; text-transform: none; }
+.hm-dow, .hm-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.hm-dow span { font-size: 9px; color: var(--text-tertiary); text-align: center; padding-bottom: 2px; }
+.hm-cell { aspect-ratio: 1; border-radius: 3px; background: var(--bg-tertiary); display: block; width: 100%; padding: 0; }
+.hm-cell.blank { background: transparent; }
+.hm-cell.future { background: transparent; border: 1px dashed #1f1f1f; }
+.hm-none, .hm-zero { background: var(--bg-tertiary); }
+.hm-zero { background: #33333a; }
+.hm-pos-1 { background: #4ade8040; }
+.hm-pos-2 { background: #4ade808c; }
+.hm-pos-3 { background: var(--accent); }
+.hm-neg-1 { background: #f8717140; }
+.hm-neg-2 { background: #f871718c; }
+.hm-neg-3 { background: var(--negative); }
+button.hm-cell:focus-visible, .hm-cell.sel { outline: 2px solid var(--text-primary); outline-offset: 1px; }
+.hm-year { padding-bottom: 18px; }
+.hm-mgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px 8px; }
+.hm-mcell { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; }
+.hm-mcell .hm-cell { border-radius: 6px; }
+.hm-year-sub { padding-top: 8px; }
+
+/* ---------- Tier 3: Reports (brief 5.13) ---------- */
+
+.rep-section { padding-top: 6px; }
+.rep-head { display: flex; align-items: center; gap: 8px; padding: 18px 0 8px; }
+.rep-title { flex: 1; font-size: 13px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-primary); }
+.rep-best-label {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--accent); background: var(--accent-dim); padding: 3px 8px; border-radius: 10px;
+}
+.rep-best { display: block; }
+.rep-best-row {
+  display: flex; align-items: baseline; gap: 10px;
+  min-height: 52px; padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.rep-best-what { width: 112px; flex: none; font-size: 11px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-secondary); }
+.rep-best-name { flex: 1; min-width: 0; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rep-best-val { font-size: 19px; font-weight: 300; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rep-hour-chart { margin: 0 0 4px; }
+.bar-chart g.bar { cursor: pointer; outline: none; }
+.bar-chart g.bar:focus-visible rect:last-child { stroke: #fff; stroke-width: 1; }
+.rep-buckets { margin-top: 4px; }
+.rep-bucket.sel { background: var(--bg-secondary); margin: 0 calc(-1 * var(--pad-x)); padding-left: var(--pad-x); padding-right: var(--pad-x); width: calc(100% + 2 * var(--pad-x)); }
+.rep-note { padding: 0 0 8px; }
+.rep-feed { margin: 4px 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.rep-feed svg { width: 14px; height: 14px; }

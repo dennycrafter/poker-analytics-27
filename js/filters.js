@@ -4,6 +4,7 @@
 
 import { getState, mutate } from './store.js';
 import { fmtNum } from './format.js';
+import { overlapsHour, hourRangeLabel } from './hours.js';
 
 export const RANGES = [
   ['7d', 'Last 7d', 'Last 7 days'],
@@ -20,8 +21,11 @@ export function emptyFilter() {
     kind: 'both',                       // 'both' | 'cash' | 'tournament'
     game_ids: [], stakes: [], tournament_type_ids: [],
     location_ids: [], bankroll_ids: [], group_ids: [],
+    hour: null, // 0-23: Reports hour-bucket drill-down (session overlaps that local hour)
   };
 }
+
+export function hasHour(f) { return Number.isInteger(f.hour) && f.hour >= 0 && f.hour < 24; }
 
 export function getFilter(doc, tab) {
   const f = doc && doc.ui && doc.ui.filters && doc.ui.filters[tab];
@@ -39,7 +43,7 @@ export function setFilter(tab, filter) {
 export function clearFilter(tab) { setFilter(tab, emptyFilter()); }
 
 export function isActive(f) {
-  return f.range !== 'all' || f.kind !== 'both' ||
+  return f.range !== 'all' || f.kind !== 'both' || hasHour(f) ||
     ['game_ids', 'stakes', 'tournament_type_ids', 'location_ids', 'bankroll_ids', 'group_ids']
       .some(k => (f[k] || []).length > 0);
 }
@@ -97,6 +101,7 @@ export function matches(f, s, nowMs = Date.now()) {
   if (!inList(f.location_ids, s.location_id)) return false;
   if (!inList(f.bankroll_ids, s.bankroll_id)) return false;
   if (!inList(f.group_ids, s.group_id)) return false;
+  if (hasHour(f) && !overlapsHour(s, f.hour)) return false;
   const hasStakes = f.stakes && f.stakes.length;
   const hasTT = f.tournament_type_ids && f.tournament_type_ids.length;
   if (s.kind === 'cash') {
@@ -122,16 +127,33 @@ function compact(arr) {
   return arr.slice(0, 2).join(', ') + ' +' + (arr.length - 2);
 }
 
+const MON3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 function fmtDay(str) {
   const d = localDate(str, false);
   if (!d) return '…';
-  return d.getDate() + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()];
+  return d.getDate() + ' ' + MON3[d.getMonth()];
+}
+
+// Custom ranges that are exactly one day / month / year (Calendar drill-downs)
+// read as "4 Jul 2026", "Jul 2026", "2026" instead of "1 Jul – 31 Jul".
+function customLabel(f) {
+  const a = localDate(f.from, false), b = localDate(f.to, false);
+  if (a && b) {
+    if (f.from === f.to) return a.getDate() + ' ' + MON3[a.getMonth()] + ' ' + a.getFullYear();
+    const monthEnd = new Date(a.getFullYear(), a.getMonth() + 1, 0);
+    if (a.getDate() === 1 && b.getTime() === monthEnd.getTime()) return MON3[a.getMonth()] + ' ' + a.getFullYear();
+    if (a.getMonth() === 0 && a.getDate() === 1 && b.getFullYear() === a.getFullYear() && b.getMonth() === 11 && b.getDate() === 31) {
+      return String(a.getFullYear());
+    }
+  }
+  return fmtDay(f.from) + ' – ' + fmtDay(f.to);
 }
 
 // "Last 30 days · Cash · UCD"
 export function summary(doc, f) {
   const parts = [];
-  if (f.range === 'custom') parts.push(fmtDay(f.from) + ' – ' + fmtDay(f.to));
+  if (f.range === 'custom') parts.push(customLabel(f));
   else if (f.range !== 'all') parts.push(RANGES.find(r => r[0] === f.range)[2]);
   if (f.kind === 'cash') parts.push('Cash');
   if (f.kind === 'tournament') parts.push('Tournament');
@@ -142,6 +164,7 @@ export function summary(doc, f) {
   add(names(doc.locations, f.location_ids || []));
   add(names(doc.bankrolls, f.bankroll_ids || []));
   add(names(doc.groups, f.group_ids || []));
+  if (hasHour(f)) parts.push(hourRangeLabel(f.hour));
   return parts.join(' · ');
 }
 
