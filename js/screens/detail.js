@@ -2,13 +2,16 @@
 // editable; red Delete session at the bottom. No ticking timer.
 
 import { navigate } from '../router.js';
-import { getState } from '../store.js';
+import { getState, genId } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, toast, openSheet, confirmSheet, numberSheet, textSheet, selectSheet } from '../ui.js';
 import { pickNumber } from './picker.js';
-import { fmtDur, fmtMoney, moneyClass, fmtClock, fmtDateShort, getCurrency } from '../format.js';
-import { playSeconds, netResult, stackBuyIn, stackCashedOut, effectiveHands, hourlyRate } from '../stats.js';
-import { updateSession, deleteSession, addStackEvent } from '../domain.js';
+import { fmtDur, fmtMoney, moneyClass, fmtClock, fmtDateShort, getCurrency, fmtNum } from '../format.js';
+import { playSeconds, netResult, stackBuyIn, stackCashedOut, effectiveHands, hourlyRate, sessionNet, sessionHours, hasStaking } from '../stats.js';
+import { updateSession, deleteSession, addStackEvent, addSellAction, deleteSellAction } from '../domain.js';
+import { stakingMode } from './stats.js';
+import { openSellSheet, sellSummary } from './sell.js';
+import { sellActionsOf, sellLedger, makeSellAction } from '../staking.js';
 import { localInputValue, utcFromLocalInputs } from '../dates.js';
 
 export function DetailScreen(root, doc, sessionId) {
@@ -19,10 +22,18 @@ export function DetailScreen(root, doc, sessionId) {
   const loc = doc.locations.find(l => l.id === s.location_id);
   const bank = doc.bankrolls.find(b => b.id === s.bankroll_id);
 
+  // Staked tournaments follow the Statistics gross / net-of-staking
+  // preference (formula 1) so this card and Statistics always agree.
   function headerHtml() {
     const secs = s.duration_seconds || 0;
-    const net = netResult(doc, s);
-    const rate = hourlyRate(doc, s);
+    const staked = hasStaking(getState(), s);
+    const mode = stakingMode(getState());
+    const net = staked ? sessionNet(getState(), s, mode) : netResult(doc, s);
+    const h = sessionHours(s);
+    const rate = staked ? (h > 0 ? net / h : null) : hourlyRate(doc, s);
+    const basis = staked
+      ? `<div class="hint" style="margin-top:10px">${mode === 'net' ? 'Net of staking' : 'Gross (before staking)'} · gross ${fmtMoney(netResult(doc, s), cur)}</div>`
+      : '';
     return `<div class="live-card">
       <div class="live-timer small">${fmtDur(secs)}</div>
       <div class="live-sub">
@@ -35,7 +46,28 @@ export function DetailScreen(root, doc, sessionId) {
           <span class="val ${moneyClass(net)}">${fmtMoney(net, cur)}</span>
         </div>
       </div>
+      ${basis}
     </div>`;
+  }
+
+  function ledgerHtml() {
+    const d = getState();
+    if (s.kind !== 'tournament' || !hasStaking(d, s)) return '';
+    const L = sellLedger(d, s);
+    const line = (label, v, cls = moneyClass(v)) =>
+      `<div class="field-row ledger-row"><span class="field-name">${esc(label)}</span><span class="field-value ${cls}">${fmtMoney(v, cur)}</span></div>`;
+    return `<div class="section-label" style="padding-left:0">Staking ledger</div>
+      <div class="rows" style="padding:0">
+        ${L.entries.map(e => `
+          <div class="field-row ledger-row">
+            <span class="field-name">${esc(e.backer_name || 'Backer')} · ${fmtNum(e.percentage)}% x${fmtNum(e.markup)}</span>
+            <span class="field-value"><span class="hint">paid ${fmtMoney(e.cost, cur)} · gets ${fmtMoney(e.payout, cur)}</span></span>
+          </div>`).join('')}
+        ${line('Received from backers', L.received)}
+        ${line('Paid to backers', -L.paidOut)}
+        ${line('Gross result', L.gross)}
+        ${line('Your result (net of staking)', L.retained)}
+      </div>`;
   }
 
   function rowHtml(label, value, key, chevron = true) {
@@ -76,6 +108,7 @@ export function DetailScreen(root, doc, sessionId) {
       ${rowHtml('Prize', s.prize != null ? fmtMoney(s.prize, cur) : '--', 'prize')}
       ${rowHtml('Position', s.position ?? '--', 'position')}
       ${rowHtml('Entries', s.entries ?? '--', 'entries')}
+      ${rowHtml('Sell action', esc(sellSummary(sellActionsOf(getState(), s.id))), 'sell')}
       ${rowHtml('Tips', s.tips ? fmtMoney(-s.tips, cur) : '--', 'tips')}
       ${rowHtml('Hands count', handsVal, 'hands')}
       ${rowHtml('Comment', esc(s.comment || '--'), 'comment')}
@@ -102,6 +135,7 @@ export function DetailScreen(root, doc, sessionId) {
         <div class="form">
           ${headerHtml()}
           <div class="rows">${rowsHtml()}</div>
+          ${ledgerHtml()}
           <button class="btn-danger" data-act="delete">Delete session</button>
           <div class="spacer-40"></div>
         </div>
@@ -270,6 +304,11 @@ export function DetailScreen(root, doc, sessionId) {
       on('ttype', () => selectSheet({
         title: 'Tournament type', options: getState().tournament_types, selectedId: s.tournament_type_id, allowNone: false,
         onSave: sel => updateSession(sessionId, { tournament_type_id: sel.id }),
+      }));
+      on('sell', () => openSellSheet({
+        actions: sellActionsOf(getState(), sessionId),
+        onAdd: v => { addSellAction(sessionId, makeSellAction(genId('sell'), sessionId, v)); toast('Sell action saved'); },
+        onDelete: id => { deleteSellAction(id); toast('Sell action removed'); },
       }));
       on('tname', () => textSheet({
         title: 'Tournament name', label: 'Name', value: s.tournament_name,

@@ -6,8 +6,10 @@ import { navigate } from '../router.js';
 import { getState, mutate, genId } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, toast, selectSheet, openSheet } from '../ui.js';
-import { startLiveCash, startLiveTournament, logPastSession, getLiveSession } from '../domain.js';
-import { toLocalInputValue } from '../format.js';
+import { startLiveCash, startLiveTournament, logPastSession, getLiveSession, addSellActions } from '../domain.js';
+import { openSellSheet } from './sell.js';
+import { makeSellAction, soldPercent } from '../staking.js';
+import { toLocalInputValue, fmtNum } from '../format.js';
 
 const STAKE_CHIPS = [[0.1, 0.2], [0.25, 0.5], [0.5, 1], [1, 2], [2, 5], [5, 10]];
 
@@ -31,6 +33,8 @@ export function StartScreen(root, doc, kind) {
     position: null,
     entries: null,
     __start: null,
+    // Pending sell actions (brief 5.6); attached when the session is created.
+    sells: [],
   };
 
   function lastLocationId(d) {
@@ -134,8 +138,8 @@ export function StartScreen(root, doc, kind) {
         <header class="topbar">
           <button class="topbtn" data-act="cancel">Cancel</button>
           <h1>${esc(name)}</h1>
-          ${kind === 'tournament' && !state.past
-            ? '<button class="topbtn" data-act="sell" style="color:var(--accent);font-size:13px">Sell %</button>'
+          ${kind === 'tournament'
+            ? `<button class="topbtn" data-act="sell" style="color:var(--accent);font-size:13px">${sellLabel()}</button>`
             : '<span class="topbtn" style="visibility:hidden"></span>'}
         </header>
         <div class="form">${body}</div>
@@ -199,7 +203,26 @@ export function StartScreen(root, doc, kind) {
       state.past = !state.past; render();
     });
     const sellBtn = root.querySelector('[data-act=sell]');
-    if (sellBtn) sellBtn.addEventListener('click', () => toast('Staking arrives in a later update'));
+    if (sellBtn) sellBtn.addEventListener('click', openSell);
+  }
+
+  function sellLabel() {
+    const p = soldPercent(state.sells);
+    return p > 0 ? `Sold ${fmtNum(p)}%` : 'Sell %';
+  }
+
+  // Updates only the button label: a full re-render would drop un-bound
+  // inputs (past-mode times) the user may already have typed.
+  function openSell() {
+    const refresh = () => {
+      const btn = root.querySelector('[data-act=sell]');
+      if (btn) btn.textContent = sellLabel();
+    };
+    openSellSheet({
+      actions: state.sells,
+      onAdd(v) { state.sells.push(makeSellAction(genId('sell'), null, v)); refresh(); },
+      onDelete(id) { state.sells = state.sells.filter(a => a.id !== id); refresh(); },
+    });
   }
 
   // Choose from a list; optionally add a brand-new named entity (committed
@@ -307,6 +330,7 @@ export function StartScreen(root, doc, kind) {
         tips: 0, hands_count: null,
       });
     }
+    if (state.sells.length) addSellActions(id, state.sells);
     toast('Session saved');
     navigate('/session/' + id);
   }
@@ -337,6 +361,7 @@ export function StartScreen(root, doc, kind) {
         start_time: startDate.toISOString(),
       });
     }
+    if (kind === 'tournament' && state.sells.length) addSellActions(id, state.sells);
     navigate('/live/' + id);
   }
 

@@ -2,14 +2,18 @@
 // editable rows, pause/resume, action sheet, end session flow.
 
 import { addCleanup, navigate } from '../router.js';
-import { getState } from '../store.js';
+import { getState, genId } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, toast, openSheet, confirmSheet, numberSheet, textSheet } from '../ui.js';
 import { pickRef, pickNumber } from './picker.js';
 import { onTick } from '../tick.js';
 import { fmtTimer, fmtDur, fmtMoney, moneyClass, fmtClock, fmtDateShort, getCurrency } from '../format.js';
 import { playSeconds, netResult, stackBuyIn, stackCashedOut, effectiveHands, liveHourlyRate } from '../stats.js';
-import { endLiveCash, endLiveTournament, updateSession, deleteSession } from '../domain.js';
+import { endLiveCash, endLiveTournament, updateSession, deleteSession, addSellAction, deleteSellAction } from '../domain.js';
+import { openSellSheet, sellSummary } from './sell.js';
+import { sellActionsOf, makeSellAction } from '../staking.js';
+import { openNoteSheet } from './players.js';
+import { openTransactionSheet } from './bankroll.js';
 
 // Finish-sheet validation (brief 5.7): both fields are required; a prize of 0
 // (busted) is valid, an empty prize is not. Returns an error message or null.
@@ -84,6 +88,7 @@ export function LiveScreen(root, doc, sessionId) {
       ${rowHtml('Prize', s.prize != null ? fmtMoney(s.prize, cur) : '<span class="hint">on end</span>', { key: 'prize', chevron: false })}
       ${rowHtml('Position', s.position ?? '--', { key: 'position' })}
       ${rowHtml('Entries', s.entries ?? '--', { key: 'entries' })}
+      ${rowHtml('Sell action', esc(sellSummary(sellActionsOf(getState(), s.id))), { key: 'sell' })}
       ${rowHtml('Tips', s.tips ? fmtMoney(-s.tips, cur) : '--', { key: 'tips' })}
       ${rowHtml('Hands count', handsVal, { key: 'hands' })}
       ${rowHtml('Comment', esc(s.comment || '--'), { key: 'comment' })}
@@ -153,12 +158,19 @@ export function LiveScreen(root, doc, sessionId) {
           <button class="sheet-row" data-a="note">${icon('note')}<span>Add player note</span></button>
           <button class="sheet-row danger" data-a="del">${icon('trash')}<span>Delete session</span></button>`,
         onMount(sheet, close) {
-          for (const a of ['hand', 'txn', 'note']) {
-            sheet.querySelector(`[data-a=${a}]`).addEventListener('click', () => {
-              close();
-              toast('Full management arrives in a later update');
-            });
-          }
+          sheet.querySelector('[data-a=hand]').addEventListener('click', () => {
+            close();
+            toast('Adding hand histories arrives in a later update');
+          });
+          sheet.querySelector('[data-a=txn]').addEventListener('click', () => {
+            close();
+            const cur2 = getState().sessions.find(x => x.id === sessionId);
+            openTransactionSheet({ bankrollId: cur2 ? cur2.bankroll_id : null });
+          });
+          sheet.querySelector('[data-a=note]').addEventListener('click', () => {
+            close();
+            openNoteSheet({ sessionId });
+          });
           sheet.querySelector('[data-a=del]').addEventListener('click', () => {
             close();
             confirmSheet({
@@ -181,6 +193,11 @@ export function LiveScreen(root, doc, sessionId) {
       const el = root.querySelector(`[data-field="${key}"]`);
       if (el) el.addEventListener('click', fn);
     };
+    on('sell', () => openSellSheet({
+      actions: sellActionsOf(getState(), sessionId),
+      onAdd: v => { addSellAction(sessionId, makeSellAction(genId('sell'), sessionId, v)); toast('Sell action saved'); },
+      onDelete: id => { deleteSellAction(id); toast('Sell action removed'); },
+    }));
     on('tips', () => numberSheet({
       title: 'Tips', label: 'Tips given', value: s.tips || null, allowEmpty: true,
       onSave: v => updateSession(sessionId, { tips: v || 0 }),

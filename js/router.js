@@ -11,6 +11,10 @@ import { MoreScreen, HandView, NoteView } from './screens/simple.js';
 import { CalendarScreen, CalendarGridScreen } from './screens/calendar.js';
 import { ReportsScreen, ReportDetailScreen } from './screens/reports.js';
 import { StatsScreen, StatDetailScreen } from './screens/stats.js';
+import { BankrollScreen, BankrollDetailScreen } from './screens/bankroll.js';
+import { SettingsScreen, MasterListScreen } from './screens/settings.js';
+import { PlayersScreen, PlayerDetailScreen } from './screens/players.js';
+import { Top10Screen } from './screens/top10.js';
 import { closeSheets } from './ui.js';
 
 const ROUTES = [
@@ -22,6 +26,13 @@ const ROUTES = [
   { re: /^\/reports$/, tab: 'reports', render: (r, d) => ReportsScreen(r, d) },
   { re: /^\/reports\/([a-z]+)$/, tab: 'reports', render: (r, d, m) => ReportDetailScreen(r, d, m[1]) },
   { re: /^\/more$/, tab: 'more', render: (r, d) => MoreScreen(r, d) },
+  { re: /^\/more\/bankroll$/, tab: 'more', render: (r, d) => BankrollScreen(r, d) },
+  { re: /^\/more\/bankroll\/([A-Za-z0-9_-]+)$/, tab: 'more', render: (r, d, m) => BankrollDetailScreen(r, d, m[1]) },
+  { re: /^\/more\/settings$/, tab: 'more', render: (r, d) => SettingsScreen(r, d) },
+  { re: /^\/more\/settings\/(games|locations|tournament_types|groups)$/, tab: 'more', render: (r, d, m) => MasterListScreen(r, d, m[1]) },
+  { re: /^\/more\/top10$/, tab: 'more', render: (r, d) => Top10Screen(r, d) },
+  { re: /^\/more\/players$/, tab: 'more', render: (r, d) => PlayersScreen(r, d) },
+  { re: /^\/more\/players\/(.+)$/, tab: 'more', render: (r, d, m) => PlayerDetailScreen(r, d, m[1]) },
   { re: /^\/new\/(cash|tournament)$/, tab: 'feed', render: (r, d, m) => StartScreen(r, d, m[1]) },
   { re: /^\/live\/([A-Za-z0-9-]+)\/stack$/, tab: 'feed', render: (r, d, m) => StackScreen(r, d, m[1]) },
   { re: /^\/live\/([A-Za-z0-9-]+)$/, tab: 'feed', render: (r, d, m) => LiveScreen(r, d, m[1]) },

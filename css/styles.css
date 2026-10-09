@@ -97,7 +97,7 @@ a { color: inherit; text-decoration: none; }
 .live-banner-timer { font-weight: 500; letter-spacing: 0; margin-left: auto; }
 .live-banner-timer .sec { font-size: 0.75em; color: var(--text-secondary); }
 .live-banner-cta { display: inline-flex; align-items: center; gap: 2px; }
-.live-banner-cta .icon svg { width: 14px; height: 14px; }
+.live-banner-cta .icon svg, .live-banner-cta svg.icon { width: 14px; height: 14px; }
 
 /* ---------- top bar ---------- */
 
@@ -125,9 +125,9 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-secondary);
 }
 
-.topbtn .icon svg { width: 20px; height: 20px; }
+.topbtn .icon svg, .topbtn svg.icon { width: 20px; height: 20px; }
 .topbtn.accent { color: var(--accent); }
-.topbtn.accent .icon svg { width: 24px; height: 24px; }
+.topbtn.accent .icon svg, .topbtn.accent svg.icon { width: 24px; height: 24px; }
 
 /* ---------- segmented control ---------- */
 
@@ -200,7 +200,7 @@ a { color: inherit; text-decoration: none; }
 .date-col .dow { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; color: var(--text-tertiary); }
 .date-col .dnum { font-size: 20px; font-weight: 300; color: var(--text-secondary); }
 
-.session-row .mid { flex: 1; min-width: 0; }
+.session-row .mid { flex: 1; min-width: 0; overflow: hidden; }
 
 .row-title {
   font-size: 15px;
@@ -222,7 +222,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--text-secondary);
 }
 
-.row-sub .icon svg { width: 13px; height: 13px; }
+.row-sub .icon svg, .row-sub svg.icon { width: 13px; height: 13px; }
 .dotsep { width: 3px; height: 3px; border-radius: 50%; background: var(--text-tertiary); flex: none; }
 
 .session-row .right {
@@ -232,9 +232,9 @@ a { color: inherit; text-decoration: none; }
   flex: none;
 }
 
-.session-row .net { font-size: 20px; font-weight: 300; }
+.session-row .net { font-size: 20px; font-weight: 300; white-space: nowrap; }
 .session-row .chev, .simple-row .chev { color: var(--text-tertiary); }
-.chev .icon svg { width: 16px; height: 16px; }
+.chev .icon svg, svg.icon.chev { width: 16px; height: 16px; }
 
 .live-badge {
   display: inline-flex;
@@ -317,9 +317,12 @@ a { color: inherit; text-decoration: none; }
   font-size: 15px;
   color: var(--text-secondary);
   font-weight: 400;
+  white-space: nowrap;
 }
+/* <button> rows shrink to content by default; rows always span the list. */
+button.field-row, button.simple-row { width: 100%; text-align: left; }
 
-.row-icon .icon svg { width: 18px; height: 18px; color: var(--text-secondary); }
+.row-icon .icon svg, .row-icon svg.icon { width: 18px; height: 18px; color: var(--text-secondary); }
 
 .field-row .field-value {
   display: inline-flex;
@@ -456,14 +459,15 @@ input[type=date].input, input[type=time].input, input[type=datetime-local].input
   color: var(--text-primary);
 }
 
-.btn-icon .icon svg { width: 22px; height: 22px; }
+.btn-icon .icon svg, .btn-icon svg.icon { width: 22px; height: 22px; }
 .btn-icon:active { transform: scale(0.94); }
 
 /* ---------- full-screen modal (start form / live / detail) ---------- */
 
 .modal-screen {
   position: fixed;
-  inset: 0;
+  /* Stop above the tab bar (z 50) so footer actions like Start stay tappable. */
+  inset: 0 0 calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px)) 0;
   margin: 0 auto;
   max-width: var(--phone-w);
   background: var(--bg-primary);
@@ -630,7 +634,7 @@ input[type=date].input, input[type=time].input, input[type=datetime-local].input
   color: var(--text-tertiary);
 }
 
-#tabbar .tab .icon svg { width: 22px; height: 22px; }
+#tabbar .tab .icon svg, #tabbar .tab svg.icon { width: 22px; height: 22px; }
 #tabbar .tab.active { color: var(--accent); }
 #tabbar .tab:active { opacity: 0.8; }
 
@@ -687,8 +691,8 @@ input[type=date].input, input[type=time].input, input[type=datetime-local].input
 }
 
 .sheet-row:last-of-type { border-bottom: none; }
-.sheet-row .icon svg { width: 19px; height: 19px; color: var(--text-secondary); }
-.sheet-row.danger, .sheet-row.danger .icon svg { color: var(--negative); }
+.sheet-row .icon svg, .sheet-row svg.icon { width: 19px; height: 19px; color: var(--text-secondary); }
+.sheet-row.danger, .sheet-row.danger .icon svg, .sheet-row.danger svg.icon { color: var(--negative); }
 .sheet-row .chev, .sheet-row .icon.check { margin-left: auto; color: var(--accent); }
 .sr-label { flex: 1; }
 
@@ -744,6 +748,9 @@ input[type=date].input, input[type=time].input, input[type=datetime-local].input
 
 .icon { display: inline-flex; line-height: 0; }
 .icon svg { display: block; }
+/* icon() renders <svg class="icon"> itself; give it a size so it never collapses
+   or stretches inside flex rows. Contextual rules below/above override. */
+svg.icon { width: 20px; height: 20px; flex: none; }
 
 /* ---------- Tier 2: filter button dot + summary pill (brief 9) ---------- */
 
@@ -791,7 +798,7 @@ input[type=date].input, input[type=time].input, input[type=datetime-local].input
   background: var(--bg-tertiary);
   color: var(--text-secondary);
 }
-.filter-pill-x .icon svg { width: 16px; height: 16px; }
+.filter-pill-x .icon svg, .filter-pill-x svg.icon { width: 16px; height: 16px; }
 
 .filter-section { padding: 12px 0 4px; border-bottom: 1px solid var(--border); }
 .filter-section .field-label { margin-bottom: 10px; }
@@ -1037,3 +1044,45 @@ button.hm-cell:focus-visible, .hm-cell.sel { outline: 2px solid var(--text-prima
 .rep-note { padding: 0 0 8px; }
 .rep-feed { margin: 4px 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
 .rep-feed svg { width: 14px; height: 14px; }
+
+/* ---------- Tier 4: bankroll, sell action, settings, players, top 10 ---------- */
+
+.bank-card { padding: 14px 12px 8px; }
+.bank-top { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.bank-col { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bank-col.right { align-items: flex-end; text-align: right; }
+.bank-col .lbl {
+  font-size: 11px; font-weight: 500; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-secondary);
+}
+.bank-col .big-num { font-size: 2.2rem; }
+/* Formula 12 bands: red > 30%, yellow 10-30%, green < 10%. */
+.ror-high { color: var(--negative); }
+.ror-mid { color: #facc15; }
+.ror-low { color: var(--accent); }
+.ror-note { margin: 6px 2px 0; line-height: 1.4; }
+.bankroll-screen .btn-danger { width: 100%; margin: 16px 0 0; }
+
+.txn-row, .note-row { width: 100%; text-align: left; }
+.txn-row .field-name { flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.txn-row .field-name > span:first-child { color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.txn-date { font-size: 12px; }
+
+.sell-row { justify-content: space-between; }
+.sell-del { color: var(--negative); flex: none; }
+.ledger-row { cursor: default; min-height: 52px; }
+
+.note-row { max-height: none; align-items: flex-start; }
+.note-text { color: var(--text-primary); font-size: 15px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; margin-top: 4px; }
+
+.top10-note { margin: 0 0 4px; }
+.top10-item { display: flex; align-items: center; gap: 8px; }
+.top10-item .session-row { flex: 1; min-width: 0; gap: 8px; }
+.top10-item .date-col { width: 32px; }
+.top10-item .session-row .net { font-size: 18px; }
+.top10-rank {
+  flex: none; width: 22px; text-align: center;
+  font-size: 13px; font-weight: 500; color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.top10-item .row-sub > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

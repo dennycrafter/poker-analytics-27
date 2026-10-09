@@ -194,3 +194,133 @@ export function ensureByName(d, list, name, idPrefix) {
   list.push(item);
   return item.id;
 }
+
+// ===========================================================================
+// Tier 4 mutations: sell actions, bankrolls, transactions, master data,
+// player notes, currency. Sell actions ride on their session row; the rest
+// sync through bankroll_transactions and user_settings (see store.js).
+// ===========================================================================
+
+export function addSellAction(sessionId, action) {
+  const id = genId('sell');
+  mutate(d => {
+    d.sell_actions.push({ ...action, id, session_id: sessionId });
+    const s = d.sessions.find(x => x.id === sessionId);
+    if (s) s.updated_at = nowIso();
+  });
+  return id;
+}
+
+// Attach the start form's pending sell actions in one write.
+export function addSellActions(sessionId, actions) {
+  mutate(d => {
+    for (const a of actions) d.sell_actions.push({ ...a, id: a.id || genId('sell'), session_id: sessionId });
+    const s = d.sessions.find(x => x.id === sessionId);
+    if (s) s.updated_at = nowIso();
+  });
+}
+
+export function deleteSellAction(actionId) {
+  mutate(d => {
+    const a = d.sell_actions.find(x => x.id === actionId);
+    d.sell_actions = d.sell_actions.filter(x => x.id !== actionId);
+    const s = a && d.sessions.find(x => x.id === a.session_id);
+    if (s) s.updated_at = nowIso();
+  });
+}
+
+export function addTransaction({ bankroll_id, kind, amount, description, occurred_at }) {
+  const id = genId('txn');
+  const now = nowIso();
+  mutate(d => {
+    d.transactions.push({ id, bankroll_id, kind, amount, description: description || null, occurred_at, created_at: now });
+  });
+  return id;
+}
+
+export function updateTransaction(txnId, patch) {
+  mutate(d => {
+    const t = d.transactions.find(x => x.id === txnId);
+    if (t) Object.assign(t, patch);
+  });
+}
+
+export function deleteTransaction(txnId) {
+  mutate(d => { d.transactions = d.transactions.filter(x => x.id !== txnId); });
+}
+
+export function addBankroll(name, { makeDefault = false } = {}) {
+  const id = genId('bk');
+  mutate(d => {
+    if (makeDefault) d.bankrolls.forEach(b => { b.is_default = false; });
+    d.bankrolls.push({ id, name, is_default: makeDefault || d.bankrolls.length === 0, created_at: nowIso() });
+  });
+  return id;
+}
+
+export function setDefaultBankroll(bankrollId) {
+  mutate(d => { d.bankrolls.forEach(b => { b.is_default = b.id === bankrollId; }); });
+}
+
+// Master data lists: 'bankrolls' | 'games' | 'locations' | 'tournament_types' | 'groups'.
+export function renameMasterItem(listKey, id, name) {
+  mutate(d => {
+    const item = d[listKey].find(x => x.id === id);
+    if (item) item.name = name;
+  });
+}
+
+export function addMasterItem(listKey, name) {
+  const id = genId(listKey);
+  mutate(d => {
+    const item = { id, name };
+    if (listKey === 'bankrolls') { item.is_default = d.bankrolls.length === 0; item.created_at = nowIso(); }
+    d[listKey].push(item);
+  });
+  return id;
+}
+
+// Callers check usage first (screens refuse to delete referenced items).
+// Deleting the default bankroll hands the default to the first remaining one.
+export function deleteMasterItem(listKey, id) {
+  mutate(d => {
+    const wasDefault = listKey === 'bankrolls' && (d.bankrolls.find(b => b.id === id) || {}).is_default;
+    d[listKey] = d[listKey].filter(x => x.id !== id);
+    if (wasDefault && d.bankrolls.length) d.bankrolls[0].is_default = true;
+  });
+}
+
+export function setCurrency(code) {
+  mutate(d => { d.settings = { ...(d.settings || {}), currency: code }; });
+}
+
+export function addPlayerNote({ player_name, note, session_id = null }) {
+  const id = genId('note');
+  mutate(d => {
+    d.player_notes.push({ id, session_id, player_name, note, created_at: nowIso() });
+  });
+  return id;
+}
+
+export function updatePlayerNote(noteId, patch) {
+  mutate(d => {
+    const n = d.player_notes.find(x => x.id === noteId);
+    if (n) Object.assign(n, patch, { updated_at: nowIso() });
+  });
+}
+
+export function deletePlayerNote(noteId) {
+  mutate(d => { d.player_notes = d.player_notes.filter(x => x.id !== noteId); });
+}
+
+// Renaming a player re-labels every note filed under that name. Matching is
+// trimmed + case-insensitive, the same grouping the Players list uses.
+export function renamePlayer(oldName, newName) {
+  const key = String(oldName || '').trim().toLowerCase();
+  const now = nowIso();
+  mutate(d => {
+    for (const n of d.player_notes) {
+      if (String(n.player_name || '').trim().toLowerCase() === key) { n.player_name = newName; n.updated_at = now; }
+    }
+  });
+}

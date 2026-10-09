@@ -1,6 +1,5 @@
-// Screens not built yet: More lists its rows with
-// "coming soon" behavior, and HandView / NoteView give seeded hand
-// histories and player notes a basic read view (full management in Tier 4).
+// More menu (brief 5.14) plus the read views behind the Feed HANDS / NOTES
+// tabs. A note's Edit button opens the shared player-note sheet.
 
 import { navigate } from '../router.js';
 import { getState } from '../store.js';
@@ -8,13 +7,14 @@ import { icon } from '../icons.js';
 import { esc, toast, confirmSheet } from '../ui.js';
 import { currentUser, signOut } from '../account.js';
 import { fmtDateShort, fmtClock } from '../format.js';
+import { openNoteSheet } from './players.js';
 
 export function MoreScreen(root) {
   const rows = [
-    { icon: 'wallet', label: 'Bankroll', soon: true },
-    { icon: 'gear', label: 'Settings', soon: true },
-    { icon: 'trophy', label: 'Top 10', soon: true },
-    { icon: 'note', label: 'Players', soon: true },
+    { icon: 'wallet', label: 'Bankroll', to: '/more/bankroll' },
+    { icon: 'gear', label: 'Settings', to: '/more/settings' },
+    { icon: 'trophy', label: 'Top 10', to: '/more/top10' },
+    { icon: 'users', label: 'Players', to: '/more/players' },
   ];
   root.innerHTML = `
     <div class="screen">
@@ -25,10 +25,10 @@ export function MoreScreen(root) {
       </header>
       <div class="rows">
         ${rows.map(r => `
-          <div class="field-row" data-row="${r.label}">
+          <a class="field-row" href="#${r.to}" data-row="${r.label}">
             <span class="field-name row-icon">${icon(r.icon)}${r.label}</span>
-            <span class="field-value">${r.soon ? '<span class="hint">coming soon</span>' : ''}${icon('chevron', 'chev')}</span>
-          </div>`).join('')}
+            <span class="field-value">${icon('chevron', 'chev')}</span>
+          </a>`).join('')}
       </div>
       <div class="section-label account-label">Account</div>
       <div class="rows">
@@ -39,11 +39,6 @@ export function MoreScreen(root) {
       </div>
       <button class="btn-danger" data-act="signout">Sign out</button>
     </div>`;
-  for (const r of rows) {
-    root.querySelector(`[data-row="${r.label}"]`).addEventListener('click', () => {
-      toast(`${r.label} arrives in a later update`);
-    });
-  }
   currentUser()
     .then(u => {
       const el = root.querySelector('[data-role=email]');
@@ -95,7 +90,7 @@ export function NoteView(root, doc, noteId) {
       <header class="topbar">
         <button class="topbtn" data-act="back" aria-label="Back">${icon('back')}</button>
         <h1>Player note</h1>
-        <span class="topbtn" style="visibility:hidden"></span>
+        <button class="topbtn accent" data-act="edit" aria-label="Edit note">${icon('note')}</button>
       </header>
       <div class="form">
         <div class="live-card">
@@ -107,4 +102,5 @@ export function NoteView(root, doc, noteId) {
       </div>
     </div>`;
   root.querySelector('[data-act=back]').addEventListener('click', () => navigate('/feed'));
+  root.querySelector('[data-act=edit]').addEventListener('click', () => openNoteSheet({ note: n }));
 }

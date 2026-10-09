@@ -6,14 +6,20 @@ import { getState } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, openSheet } from '../ui.js';
 import { getCurrency, fmtMoney, moneyClass, fmtDur, weekdayAbbr, dayNum, monthLabel, fmtClock } from '../format.js';
-import { netResult, groupByMonth, playSeconds } from '../stats.js';
+import { sessionNet, groupByMonth, playSeconds } from '../stats.js';
+import { stakingMode } from './stats.js';
 import { getFilter, applyFilter, isActive } from '../filters.js';
 import { filterButtonHtml, filterPillHtml, wireFilter } from './filter.js';
+import { openNoteSheet } from './players.js';
+import { openTransactionSheet, openNewBankrollSheet } from './bankroll.js';
 
-export function sessionRowHtml(doc, s) {
+// Results follow the Statistics staking toggle (formula 1) so a staked
+// tournament shows the same number in Feed, Detail, Top 10 and Statistics.
+// Cash sessions and unstaked tournaments are identical in both modes.
+export function sessionRowHtml(doc, s, netOverride = null) {
   const cur = getCurrency(doc);
   const d = new Date(s.start_time);
-  const net = netResult(doc, s);
+  const net = netOverride === null ? sessionNet(doc, s, stakingMode(doc)) : netOverride;
   const game = doc.games.find(g => g.id === s.game_id);
   let title;
   if (s.kind === 'cash') {
@@ -90,19 +96,18 @@ function plusMenu() {
     ].map(([act, ic, label]) =>
       `<button class="sheet-row" data-act="${act}">${ic}<span>${label}</span><span class="icon chev">${icon('chevron')}</span></button>`
     ).join(''),
-    onMount(sheet) {
+    onMount(sheet, close) {
       sheet.querySelector('[data-act=cash]').addEventListener('click', () => navigate('/new/cash'));
       sheet.querySelector('[data-act=tournament]').addEventListener('click', () => navigate('/new/tournament'));
-      for (const act of ['hand', 'note', 'txn', 'bank']) {
-        sheet.querySelector(`[data-act=${act}]`).addEventListener('click', () => {
-          // Full management screens arrive in Tier 4.
-          document.querySelector('.sheet-backdrop')?.remove();
-          openSheet({
-            title: 'Coming soon',
-            bodyHtml: '<p style="padding:8px 4px;color:var(--text-secondary);font-size:15px">This is built in a later update. Sessions are fully available now.</p>',
-          });
-        });
-      }
+      const then = fn => () => { close(); fn(); };
+      sheet.querySelector('[data-act=note]').addEventListener('click', then(() => openNoteSheet()));
+      sheet.querySelector('[data-act=txn]').addEventListener('click', then(() => openTransactionSheet()));
+      sheet.querySelector('[data-act=bank]').addEventListener('click', then(openNewBankrollSheet));
+      // Hand-history entry is not in scope yet (brief 5.1 allows "coming soon").
+      sheet.querySelector('[data-act=hand]').addEventListener('click', then(() => openSheet({
+        title: 'Coming soon',
+        bodyHtml: '<p style="padding:8px 4px;color:var(--text-secondary);font-size:15px">Adding hand histories is built in a later update.</p>',
+      })));
     },
   });
 }
@@ -130,7 +135,8 @@ export function FeedScreen(root, doc) {
         : '<div class="empty-block">No sessions yet. Tap + to log your first one.</div>';
     } else {
       listHtml = groups.map(g => {
-        const total = g.sessions.reduce((a, s) => a + netResult(doc, s), 0);
+        const mode = stakingMode(doc);
+        const total = g.sessions.reduce((a, s) => a + sessionNet(doc, s, mode), 0);
         return `<div class="month-head"><span>${monthLabel(new Date(g.sessions[0].start_time))}</span>
             <span class="net ${moneyClass(total)}">${fmtMoney(total, cur)}</span></div>` +
           g.sessions.map(s => sessionRowHtml(doc, s)).join('');
