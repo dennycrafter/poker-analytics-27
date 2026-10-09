@@ -27,16 +27,23 @@ export function emptyFilter() {
 
 export function hasHour(f) { return Number.isInteger(f.hour) && f.hour >= 0 && f.hour < 24; }
 
+// Saved filters are device-local and may predate a field or hold a bad value;
+// fill defaults and drop an invalid hour so it can never linger unseen.
+function normalizeFilter(f) {
+  const out = { ...emptyFilter(), ...(f || {}) };
+  if (!hasHour(out)) out.hour = null;
+  return out;
+}
+
 export function getFilter(doc, tab) {
-  const f = doc && doc.ui && doc.ui.filters && doc.ui.filters[tab];
-  return { ...emptyFilter(), ...(f || {}) };
+  return normalizeFilter(doc && doc.ui && doc.ui.filters && doc.ui.filters[tab]);
 }
 
 export function setFilter(tab, filter) {
   mutate(d => {
     d.ui = d.ui || {};
     d.ui.filters = d.ui.filters || {};
-    d.ui.filters[tab] = { ...emptyFilter(), ...filter };
+    d.ui.filters[tab] = normalizeFilter(filter);
   });
 }
 
