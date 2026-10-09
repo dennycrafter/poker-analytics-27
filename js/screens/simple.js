@@ -15,6 +15,7 @@ export function MoreScreen(root) {
     { icon: 'gear', label: 'Settings', to: '/more/settings' },
     { icon: 'trophy', label: 'Top 10', to: '/more/top10' },
     { icon: 'users', label: 'Players', to: '/more/players' },
+    { icon: 'bars', label: 'Equity calculator', to: '/more/equity' },
   ];
   root.innerHTML = `
     <div class="screen">
