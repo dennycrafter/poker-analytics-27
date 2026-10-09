@@ -8,8 +8,11 @@
     "expo": "~57.0.27",
     "expo-constants": "~57.0.21",
     "expo-crypto": "~57.0.3",
+    "expo-document-picker": "~57.0.3",
+    "expo-file-system": "~57.0.7",
     "expo-linking": "~57.0.12",
     "expo-router": "~57.0.25",
+    "expo-sharing": "~57.0.22",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
@@ -41,7 +44,8 @@
     "test": "tsx --test tests/*.test.ts",
     "test:tz": "TZ=UTC tsx --test tests/*.test.ts && TZ=Europe/Dublin tsx --test tests/*.test.ts && TZ=America/Los_Angeles tsx --test tests/*.test.ts",
     "test:integration": "tsx scripts/integration-test.ts",
-    "export:web": "expo export --platform web"
+    "export:web": "expo export --platform web",
+    "golden:display": "TZ=UTC tsx scripts/gen-display-golden.ts && TZ=Europe/Dublin tsx scripts/gen-display-golden.ts && TZ=America/Los_Angeles tsx scripts/gen-display-golden.ts"
   },
   "private": true
 }
