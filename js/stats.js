@@ -47,6 +47,17 @@ export function hourlyRate(doc, s, nowMs = Date.now()) {
   return h > 0 ? netResult(doc, s) / h : null;
 }
 
+// A live rate over a few minutes of play extrapolates noise (EUR 50 won in
+// 2 minutes reads as EUR 1500/h), so the live view waits for 15 minutes of
+// active play (breaks excluded) before showing one.
+export const LIVE_RATE_MIN_SECONDS = 15 * 60;
+
+export function liveHourlyRate(doc, s, nowMs = Date.now()) {
+  const secs = playSeconds(s, nowMs);
+  if (secs < LIVE_RATE_MIN_SECONDS) return null;
+  return netResult(doc, s) / (secs / 3600);
+}
+
 export function netResultBB(doc, s) {
   if (s.kind !== 'cash' || !s.big_blind) return null;
   return netResult(doc, s) / s.big_blind;

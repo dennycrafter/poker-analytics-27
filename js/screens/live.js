@@ -8,8 +8,18 @@ import { esc, toast, openSheet, confirmSheet, numberSheet, textSheet } from '../
 import { pickRef, pickNumber } from './picker.js';
 import { onTick } from '../tick.js';
 import { fmtTimer, fmtDur, fmtMoney, moneyClass, fmtClock, fmtDateShort, getCurrency } from '../format.js';
-import { playSeconds, netResult, stackBuyIn, stackCashedOut, effectiveHands } from '../stats.js';
+import { playSeconds, netResult, stackBuyIn, stackCashedOut, effectiveHands, liveHourlyRate } from '../stats.js';
 import { endLiveCash, endLiveTournament, updateSession, deleteSession } from '../domain.js';
+
+// Finish-sheet validation (brief 5.7): both fields are required; a prize of 0
+// (busted) is valid, an empty prize is not. Returns an error message or null.
+export function finishTournamentError(posRaw, prizeRaw) {
+  const pos = Number(posRaw);
+  if (posRaw === '' || !Number.isInteger(pos) || pos < 1) return 'Enter your finishing position (1 or higher)';
+  const prize = Number(prizeRaw);
+  if (prizeRaw === '' || !Number.isFinite(prize) || prize < 0) return 'Enter your prize (0 if busted)';
+  return null;
+}
 
 export function LiveScreen(root, doc, sessionId) {
   let s = doc.sessions.find(x => x.id === sessionId);
@@ -22,14 +32,13 @@ export function LiveScreen(root, doc, sessionId) {
   function headerHtml() {
     const t = fmtTimer(playSeconds(s));
     const net = netResult(doc, s);
-    const h = playSeconds(s) / 3600;
-    const rate = h > 0 ? net / h : null;
+    const rate = liveHourlyRate(doc, s);
     return `<div class="live-card">
       <div class="live-timer">${t.main}<span class="sec">${t.sec}</span></div>
       <div class="live-sub">
         <div class="live-sub-item">
           <span class="lbl">Net hourly rate</span>
-          <span class="val ${moneyClass(rate)}">${rate === null ? '--' : fmtMoney(rate, cur) + '/h'}</span>
+          <span class="val ${moneyClass(rate)}" title="${rate === null ? 'Shown after 15 min of play' : ''}">${rate === null ? '—' : fmtMoney(rate, cur) + '/h'}</span>
         </div>
         <div class="live-sub-item">
           <span class="lbl">Net result</span>
@@ -281,17 +290,19 @@ export function LiveScreen(root, doc, sessionId) {
             <label class="field"><span class="field-label">Prize</span>
               <input class="input" data-role="prize" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0 if busted"></label>
           </div>
+          <div class="sheet-error" data-role="err" hidden></div>
           <button class="btn-primary" data-act="ok">Finish</button>`,
         onMount(sheet, close) {
           sheet.querySelector('[data-act=ok]').addEventListener('click', () => {
             const posRaw = sheet.querySelector('[data-role=pos]').value.trim();
             const prizeRaw = sheet.querySelector('[data-role=prize]').value.trim();
-            const prize = prizeRaw === '' ? 0 : Number(prizeRaw);
-            if (prizeRaw !== '' && !Number.isFinite(prize)) {
-              toast('Enter a valid prize'); return;
+            const error = finishTournamentError(posRaw, prizeRaw);
+            if (error) {
+              const err = sheet.querySelector('[data-role=err]');
+              err.textContent = error; err.hidden = false; return;
             }
             close();
-            endLiveTournament(sessionId, { position: posRaw === '' ? null : Number(posRaw), prize });
+            endLiveTournament(sessionId, { position: Number(posRaw), prize: Number(prizeRaw) });
             toast('Tournament finished');
             navigate('/feed');
           });
