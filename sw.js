@@ -15,7 +15,7 @@
 // Deploys: bump VERSION whenever any shell file changes. Static assets are
 // served cache-first, so without a bump returning visitors keep the old files.
 
-const VERSION = 'pa27-2026-10-10-it5-6';
+const VERSION = 'pa27-2026-10-10-it5-7';
 const CACHE = `pa27-shell-${VERSION}`;
 
 // Paths are relative to this file, so the app also works under a sub-path.
