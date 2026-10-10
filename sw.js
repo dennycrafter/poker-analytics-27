@@ -15,7 +15,7 @@
 // Deploys: bump VERSION whenever any shell file changes. Static assets are
 // served cache-first, so without a bump returning visitors keep the old files.
 
-const VERSION = 'pa27-2026-10-10-it5-3';
+const VERSION = 'pa27-2026-10-10-it5-4';
 const CACHE = `pa27-shell-${VERSION}`;
 
 // Paths are relative to this file, so the app also works under a sub-path.
@@ -31,6 +31,7 @@ const SHELL = [
   'icons/apple-touch-icon.png',
   'js/account.js',
   'js/backup.js',
+  'js/bankroll-ror-ui.js',
   'js/bankroll.js',
   'js/charts/svg.js',
   'js/cloud-map.js',
