@@ -7,9 +7,19 @@
 // Usage: node --no-warnings --experimental-websocket tests/stepe-samples.test.mjs
 
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+// The store's import chain constructs the Supabase realtime client, which
+// needs native WebSocket (absent before Node 22). Re-spawn with the flag,
+// mirroring tests/stepe-store-import.test.mjs.
+if (typeof globalThis.WebSocket === 'undefined') {
+  const r = spawnSync(process.execPath, ['--experimental-websocket', '--no-warnings', fileURLToPath(import.meta.url)],
+    { stdio: 'inherit', env: process.env });
+  process.exit(r.status ?? 1);
+}
 
 // Store globals before any module import.
 const mem = new Map();

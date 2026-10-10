@@ -24,10 +24,13 @@ let wiz = null;
 // Reset the wizard when the hash leaves the import route. Registered once at
 // module load: a per-render listener is removed by the router's cleanup pass
 // before the same hashchange event reaches it (the router's own listener
-// registered first), so the reset never fired on route leave.
-window.addEventListener('hashchange', () => {
-  if (!location.hash.includes('/more/import')) wiz = null;
-});
+// registered first), so the reset never fired on route leave. Guarded for
+// non-browser harnesses (Node test stubs) that never navigate.
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('hashchange', () => {
+    if (!location.hash.includes('/more/import')) wiz = null;
+  });
+}
 
 const FIELD_OPTIONS = [{ key: '', label: 'Ignore' }, ...IMPORT_FIELDS.map(f => ({ key: f.key, label: f.label }))];
 const PREVIEW_ROWS = 5;
