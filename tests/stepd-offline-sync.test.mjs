@@ -334,7 +334,9 @@ test('d1: sw.js precaches the offline-queue module and VERSION names the current
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
   // STEP D pinned the exact string it shipped; later steps legitimately bump
   // the version when the shell changes, so assert the step-version scheme.
-  assert.match(sw, /const VERSION = 'pa27-\d{4}-\d{2}-\d{2}-step[a-z]+-\d+';/);
+  // Wave iterations build as it<N>-<n> (e.g. pa27-2026-10-10-it5-1), so the
+  // scheme accepts any lowercase step/iteration tag instead of only 'step*'.
+  assert.match(sw, /const VERSION = 'pa27-\d{4}-\d{2}-\d{2}-[a-z0-9]+-\d+';/);
   assert.match(sw, /'js\/idb\.js',/);
 });
 

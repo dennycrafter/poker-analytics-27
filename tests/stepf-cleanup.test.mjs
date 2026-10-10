@@ -212,7 +212,11 @@ console.log('STEP F — cleanup for real use');
 // (d) scope pins ---------------------------------------------------------------
 test('sw.js VERSION is the STEP F build', () => {
   const swSrc = read('../sw.js');
-  const ver = /const VERSION = 'pa27-2026-10-10-stepf-1';/.test(swSrc);
+  // Generalized to the step-version scheme (same convention as the STEP D
+  // suite): each step bumps VERSION, so pinning the exact string would break
+  // every future build. The STEP C precache test separately asserts that
+  // every shipped module stays listed.
+  const ver = /const VERSION = 'pa27-2026-10-\d{2}-[a-z0-9]+-\d+';/.test(swSrc);
   const precache = /'js\/screens\/variance\.js'/.test(swSrc);
   assert.ok(ver && precache, `VERSION bumped=${ver} precache retained=${precache}`);
 });
