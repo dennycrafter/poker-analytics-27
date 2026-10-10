@@ -11,6 +11,7 @@ import { endedSessions, hasStaking } from '../stats.js';
 import { getFilter, applyFilter } from '../filters.js';
 import { SCOPES, SECTIONS, METRICS, fmtMetric, metricClass, fmtAxis, buildSeries } from '../metrics.js';
 import { seriesChart } from '../charts/svg.js';
+import { chartBox } from '../layout.js';
 import { filterButtonHtml, filterPillHtml, wireFilter } from './filter.js';
 
 // Gross vs net-of-staking (formula 1). Persisted UI preference; default net.
@@ -115,7 +116,7 @@ export function StatDetailScreen(root, doc, scope, metricId) {
   const pts = buildSeries(doc, id, scoped, { group: view.group, chart: view.chart, mode });
   const chart = scoped.length
     ? seriesChart({
-      points: pts, type: view.chart, height: 210,
+      points: pts, type: view.chart, ...chartBox(340, 210),
       fmtY: v => fmtAxis(def, v), spanBars: view.group === 'duration',
     })
     : '<div class="chart-empty">No sessions match this filter.</div>';

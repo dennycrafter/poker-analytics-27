@@ -14,6 +14,9 @@ import { playSeconds } from './stats.js';
 import { AuthScreen } from './screens/auth.js';
 import { isSheetOpen, confirmSheet, toast } from './ui.js';
 import { legacyCounts, legacyHasRecords, legacyToDoc } from './cloud-map.js';
+import { onLayoutChange } from './layout.js';
+import { installDesktopDialogs, observeScreen, syncModalDialog } from './desktop.js';
+import { registerServiceWorker } from './pwa.js';
 
 const TABS = [
   { id: 'feed', label: 'Feed', icon: 'feed', path: '/feed' },
@@ -50,6 +53,7 @@ function renderShell() {
     <div id="live-banner-slot"></div>
     <main id="screen" tabindex="-1"></main>
     <nav id="tabbar" aria-label="Main navigation">
+      <div class="sidebar-brand" aria-hidden="true"><span class="sidebar-logo">27</span><span class="sidebar-name">Poker Analytics</span></div>
       <span class="tab-indicator" aria-hidden="true"></span>
       ${TABS.map(t =>
         `<a class="tab" data-tab="${t.id}" href="#${t.path}">
@@ -58,6 +62,10 @@ function renderShell() {
     </nav>
   </div>`;
   shellMounted = true;
+  // Desktop (>= 880px): the same nav is styled as a left sidebar and modal
+  // routes become centered dialogs. Below the breakpoint these are inert.
+  installDesktopDialogs();
+  observeScreen(document.getElementById('screen'));
 }
 
 function paintBanner() {
@@ -92,8 +100,10 @@ function paintBannerAndTabs() {
   if (booting) { paintSkeleton(); return; }
   pendingRemote = false;
   paintBanner();
+  const prevActive = document.activeElement;
   const { tab } = renderRoute();
   paintTabs(tab);
+  syncModalDialog(prevActive);
 }
 
 // A remote change must never wipe what the user is in the middle of: an open
@@ -130,6 +140,17 @@ onTick(() => {
   if (pendingRemote && !userIsEditing()) paintBannerAndTabs();
 });
 setInterval(tick, 1000);
+
+// Crossing the desktop breakpoint re-renders so charts pick their canvas size
+// and modal routes switch between full-screen and dialog. Deferred like a
+// remote change if the user is mid-edit.
+onLayoutChange(() => {
+  if (!currentUserId || !shellMounted) return;
+  if (userIsEditing()) { pendingRemote = true; return; }
+  paintBannerAndTabs();
+});
+
+registerServiceWorker();
 
 // A write the server rejected is rolled back to server state; tell the user
 // instead of letting the change silently disappear.

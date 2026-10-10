@@ -10,6 +10,7 @@ import { fmtMoney, moneyClass, fmtClock, getCurrency, fmtNum } from '../format.j
 import { playSeconds, netResult, stackBuyIn, stackCashedOut, stackSeries } from '../stats.js';
 import { addStackEvent } from '../domain.js';
 import { lineChart } from '../charts/svg.js';
+import { chartBox } from '../layout.js';
 
 export function StackScreen(root, doc, sessionId) {
   let s = doc.sessions.find(x => x.id === sessionId);
@@ -40,7 +41,7 @@ export function StackScreen(root, doc, sessionId) {
     }
     return lineChart({
       points: pts, // [hoursSinceStart, cumulativeNet]
-      height: 180,
+      ...chartBox(340, 180, { desktopWidth: 560 }),
       color: 'var(--accent)',
       dashed: true,
       xLabel: h => `${h}h`,

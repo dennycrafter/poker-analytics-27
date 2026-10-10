@@ -15,6 +15,7 @@ import {
   periodLabel, hourRangeLabel,
 } from '../reports.js';
 import { barChart } from '../charts/svg.js';
+import { chartBox } from '../layout.js';
 import { stakingMode } from './stats.js';
 import { sessionRowHtml } from './feed.js';
 import { drillToPeriod, drillToFilter } from './drill.js';
@@ -81,7 +82,7 @@ export function ReportsScreen(root, doc) {
   const hourDim = DIMENSIONS[0];
   const hb = dimensionBuckets(doc, hourDim, all, mode);
   const hourChart = barChart({
-    bars: hourBars(hb, 'net'), height: 180, labelEvery: 3, fmtY: compactMoney,
+    bars: hourBars(hb, 'net'), ...chartBox(340, 180), labelEvery: 3, fmtY: compactMoney,
     ariaLabel: 'Net result by hour of day',
   });
 
@@ -146,7 +147,7 @@ export function ReportDetailScreen(root, doc, dimId) {
     ? hourBars(buckets, detail.metric)
     : shown.map(b => ({ key: b.key, label: nameOf(b), short: shortLabel(dim, b), y: valOf(b) ?? 0, empty: false }));
   const chart = barChart({
-    bars, height: 210, labelEvery: dim.hourly ? 3 : 1, fmtY: compactMoney,
+    bars, ...chartBox(340, 210), labelEvery: dim.hourly ? 3 : 1, fmtY: compactMoney,
     selected: detail.sel, ariaLabel: `${dim.title} by ${detail.metric === 'rate' ? 'net hourly rate' : 'net result'}`,
   });
 
