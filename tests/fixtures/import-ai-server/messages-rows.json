@@ -1,0 +1,15 @@
+{
+  "id": "msg_fixture_rows",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "```json\n{\"rows\":[{\"kind\":\"cash\",\"date\":\"2025-10-03\",\"stakes\":\"1/2\",\"game\":\"NLH\",\"location\":\"Lodge\",\"buy_in\":200,\"cashed_out\":540,\"net_result\":340,\"duration\":\"5h\",\"hands_count\":150,\"confidence\":0.95},{\"kind\":\"cash\",\"date\":\"2025-10-04\",\"stakes\":\"2/5\",\"game\":\"NLH\",\"location\":\"Aria\",\"buy_in\":1000,\"net_result\":-450,\"duration\":\"4h\"}]}\n```"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 120, "output_tokens": 90 }
+}

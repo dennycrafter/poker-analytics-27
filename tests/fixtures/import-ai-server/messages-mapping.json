@@ -1,0 +1,15 @@
+{
+  "id": "msg_fixture_mapping",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-sonnet-5-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "{\"roles\":{\"Date Played\":\"date\",\"Stake\":\"stakes\",\"Won/Lost\":\"net_result\",\"Duration (h:mm)\":\"duration\",\"Location\":\"location\"},\"rules\":{\"date_format\":\"MM/DD/YYYY\",\"currency\":\"USD\",\"session_type\":\"cash\",\"notes\":\"Won/Lost is signed profit\"}}"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": { "input_tokens": 300, "output_tokens": 80 }
+}
