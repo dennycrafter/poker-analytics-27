@@ -9,7 +9,8 @@ import { getState } from '../store.js';
 import { icon } from '../icons.js';
 import { esc } from '../ui.js';
 import { getCurrency, fmtMoney, moneyClass, fmtNum, fmtHours } from '../format.js';
-import { endedSessions } from '../stats.js';
+import { endedSessions, sessionNet } from '../stats.js';
+import { byWeekday, resultHistogram } from '../breakdowns.js';
 import {
   DIMENSIONS, dimensionBuckets, bestOf, bestPeriod, extremeSessions,
   periodLabel, hourRangeLabel,
@@ -63,6 +64,35 @@ export function ReportsScreen(root, doc) {
   const cur = getCurrency(doc);
   const mode = stakingMode(doc);
 
+  // Breakdowns (brief iteration 3): weekday profit table and session results
+  // histogram. Reports has no filter of its own, so both use this screen's
+  // session set (all ended sessions) and the shared staking mode.
+  const weekdayRows = byWeekday(doc, all, mode).map(r => {
+    const has = r.hours > 0 || r.profit !== 0;
+    const sub = has
+      ? `${fmtHours(r.hours)} · ${fmtMoney(r.perHour, cur)}/h · SD ${fmtMoney(r.sdPerHour, cur)}/h`
+      : 'No sessions';
+    return `<div class="rep-best-row">
+      <span class="rep-best-what">${esc(r.label)}</span>
+      <span class="rep-best-name">${esc(sub)}</span>
+      <span class="rep-best-val ${has ? moneyClass(r.profit) : 'dim'}">${has ? fmtMoney(r.profit, cur) : '--'}</span>
+    </div>`;
+  }).join('');
+  const hist = resultHistogram(all, 20, s => sessionNet(doc, s, mode));
+  const histChart = barChart({
+    bars: hist.map((b, i) => ({
+      key: i, label: `${compactMoney(b.lo)} to ${compactMoney(b.hi)}`, short: compactMoney(b.lo),
+      y: b.count, empty: b.count === 0,
+    })),
+    ...chartBox(340, 180), labelEvery: 5, fmtY: fmtNum, ariaLabel: 'Session results',
+  });
+  const breakdowns = `
+      <div class="month-head"><span>Profit by weekday</span></div>
+      <div class="card">${weekdayRows}</div>
+      <div class="month-head"><span>Session results</span></div>
+      <div class="card chart-card">${histChart}
+        <div class="chart-caption">Sessions per profit bucket</div></div>`;
+
   // Highlights
   const hl = [];
   for (const [kind, title] of [['day', 'Best day'], ['week', 'Best week'], ['month', 'Best month'], ['year', 'Best year']]) {
@@ -105,6 +135,7 @@ export function ReportsScreen(root, doc) {
     <div class="list rep-list">
       <div class="month-head"><span>Highlights</span></div>
       ${hl.join('')}
+      ${breakdowns}
       ${sections}
       <div class="spacer-40"></div>
     </div>`;
