@@ -56,8 +56,11 @@ export function buildWinrateSensitivityRows({ winrate, sd, bankroll, rorFn = ror
   });
 }
 
-// Fraction -> integer percent, the Bankroll screen's RoR precision
-// (riskOfRuin in stats.js also rounds to a whole percent).
+// Fraction -> integer percent, the Bankroll screen's RoR precision. Mirrors
+// riskOfRuin in stats.js: sub-1% risks display as 1% ("1% or less") so a row
+// never contradicts the headline block above the table.
 export function rorPercent(fraction) {
-  return Number.isFinite(fraction) ? Math.round(fraction * 100) : null;
+  if (!Number.isFinite(fraction)) return null;
+  if (fraction <= 0) return 0;
+  return Math.min(100, Math.max(1, Math.round(fraction * 100)));
 }

@@ -111,11 +111,11 @@ test('injected fns receive (bankroll, rowWinrate, sd) and the 0.05 target', () =
   assert.equal(seen.length, 6); // 3 positive rows x 2 calls; the 0% row calls nothing
 });
 
-test('rorPercent: fraction to the screen integer percent, null for junk', () => {
+test('rorPercent: screen integer percent with the riskOfRuin 1% floor', () => {
   assert.equal(rorPercent(0.36787944117144233), 37);
   assert.equal(rorPercent(1), 100);
-  assert.equal(rorPercent(0), 0);
-  assert.equal(rorPercent(0.004), 0);
+  assert.equal(rorPercent(0), 0); // true zero (no variance path)
+  assert.equal(rorPercent(0.004), 1); // sub-1% shows as 1, matching the headline block
   assert.equal(rorPercent(null), null);
   assert.equal(rorPercent(NaN), null);
   assert.equal(rorPercent(Infinity), null);
