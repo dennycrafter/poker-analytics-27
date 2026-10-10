@@ -4,7 +4,7 @@
 // sessions and transactions via their own tables — all through the store.
 
 import { navigate } from '../router.js';
-import { getState, replaceDoc, genId, whenSaved } from '../store.js';
+import { getState, replaceDoc, genId, whenSaved, getSyncStatus } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, toast, openSheet, confirmSheet, textSheet, selectSheet } from '../ui.js';
 import { getCurrency } from '../format.js';
@@ -55,11 +55,14 @@ function downloadJson(doc) {
 }
 
 // Apply a whole replacement document (import / demo reset) and wait for the
-// cloud to confirm, so the toast reflects what was actually saved.
+// cloud to confirm, so the toast reflects what was actually saved. A rejected
+// replace is rolled back by the store, so the honest message is "restored".
 async function applyReplacement(next, okMsg) {
   replaceDoc(next);
   const ok = await whenSaved(30000);
-  toast(ok ? okMsg : 'Saved on this device; some changes are still syncing to your account.');
+  if (ok) toast(okMsg);
+  else if (getSyncStatus().state === 'error') toast('The server rejected this import. Your previous data was restored.', { tone: 'error' });
+  else toast('Saved on this device; some changes are still syncing to your account.');
 }
 
 function importFile(file) {

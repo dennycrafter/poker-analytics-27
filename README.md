@@ -91,6 +91,17 @@ js/
   wins. A per-user localStorage cache paints instantly and is cleared on sign-out.
   Live timers are computed from `start_time`/pauses in the row, so they match on
   every device. A write the server rejects is rolled back and surfaced as a toast.
+- **Offline and sync:** the merge policy is last-write-wins per entity row
+  (per-field merges are not attempted). With no network the app keeps working:
+  writes stay local (localStorage plus a durable IndexedDB mirror in
+  `js/idb.js`, so the queue survives eviction and browser restarts), live
+  sessions keep ticking, and the service-worker shell keeps the app loadable.
+  When the connection returns — the window `online` event, a realtime
+  resubscribe, or the sync backoff timer — the queue flushes and a catch-up
+  pull merges anything other devices wrote meanwhile. Imports and demo resets
+  flush atomically: every upsert is confirmed before any delete runs, and a
+  rejected write rolls the document back to the pre-replace state, so a bad
+  import can never wipe an account.
 - **Legacy data:** if this browser has pre-backend localStorage data and the
   account is empty, the app offers a one-tap "Migrate local data".
 - **Keys:** only the project URL and the *publishable* key live in the repo

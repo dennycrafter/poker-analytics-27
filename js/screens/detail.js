@@ -96,9 +96,9 @@ export function DetailScreen(root, doc, sessionId) {
         ${rowHtml('Opponents', esc(s.opponents || '--'), 'opponents')}
         ${rowHtml('Break time', fmtDur(s.break_seconds || 0), 'break')}
         ${rowHtml('Game', esc(game ? game.name : '--'), 'game')}
-        ${rowHtml('Stakes', `${s.small_blind}/${s.big_blind}`, 'stakes')}
+        ${rowHtml('Stakes', esc(`${s.small_blind}/${s.big_blind}`), 'stakes')}
         ${rowHtml('Location', esc(loc ? loc.name : '--'), 'location')}
-        ${rowHtml('Table size', `${s.table_size}-max`, 'table')}
+        ${rowHtml('Table size', esc(`${s.table_size}-max`), 'table')}
         ${rowHtml('Bankroll', esc(bank ? bank.name : '--'), 'bank')}`;
     }
     return `
@@ -106,8 +106,8 @@ export function DetailScreen(root, doc, sessionId) {
       ${rowHtml('End time', s.end_time ? `${fmtDateShort(new Date(s.end_time))} ${fmtClock(new Date(s.end_time))}` : '--', 'end')}
       ${rowHtml('Buy-in', fmtMoney(s.total_buy_in, cur), 'buyin')}
       ${rowHtml('Prize', s.prize != null ? fmtMoney(s.prize, cur) : '--', 'prize')}
-      ${rowHtml('Position', s.position ?? '--', 'position')}
-      ${rowHtml('Entries', s.entries ?? '--', 'entries')}
+      ${rowHtml('Position', esc(s.position ?? '--'), 'position')}
+      ${rowHtml('Entries', esc(s.entries ?? '--'), 'entries')}
       ${rowHtml('Sell action', esc(sellSummary(sellActionsOf(getState(), s.id))), 'sell')}
       ${rowHtml('Tips', s.tips ? fmtMoney(-s.tips, cur) : '--', 'tips')}
       ${rowHtml('Hands count', handsVal, 'hands')}
@@ -118,7 +118,7 @@ export function DetailScreen(root, doc, sessionId) {
       ${rowHtml('Type', esc((doc.tournament_types.find(t => t.id === s.tournament_type_id) || {}).name || '--'), 'ttype')}
       ${rowHtml('Name', esc(s.tournament_name || '--'), 'tname')}
       ${rowHtml('Location', esc(loc ? loc.name : '--'), 'location')}
-      ${rowHtml('Table size', `${s.table_size}-max`, 'table')}
+      ${rowHtml('Table size', esc(`${s.table_size}-max`), 'table')}
       ${rowHtml('Bankroll', esc(bank ? bank.name : '--'), 'bank')}`;
   }
 

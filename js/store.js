@@ -12,10 +12,25 @@
 // Per-device UI state (doc.ui: filters, staking toggle) never leaves the device.
 
 import { supabase } from './supabase-client.js';
+import { idbSet, idbGet, idbDel } from './idb.js';
 import {
   stableStringify, sessionToRow, rowToSessionParts, transactionToRow, rowToTransaction,
   settingsToRow, applySettingsRow, defaultSettings,
 } from './cloud-map.js';
+
+// Sync & conflict policy (STEP D), also logged in README.md "Offline and sync":
+//  - The cloud is the source of truth; screens read a synchronous in-memory
+//    document and write optimistically.
+//  - Merge is last-write-wins per entity row (per-field merge is not
+//    attempted). An unsaved local edit survives stale remote echoes until it
+//    is confirmed; after that the newest confirmed write wins.
+//  - Offline: mutations keep applying locally (localStorage + IndexedDB
+//    mirror). They flush on reconnect — immediately on the window `online`
+//    event, otherwise on a backoff timer. Live sessions tick from row data, so
+//    they run offline and land in the cloud when the connection returns.
+//  - Replaces (import / demo reset) flush atomically: every upsert is
+//    confirmed before any delete runs, and a rejected write rolls the
+//    document back to the pre-replace snapshot (ISSUES.md #1/#3).
 
 const UI_KEY = 'pa27:ui';
 const cacheKey = uid => `pa27:cache:${uid}`;
@@ -38,6 +53,14 @@ let subscribedOnce = false;
 let rejectedWrites = 0;         // bumps on every server-rejected (discarded) write
 let status = { state: 'idle', error: null };
 const statusListeners = new Set();
+// Pre-replace document (data only, no ui). Set by replaceDoc; cleared when the
+// replace has fully landed or has been rolled back. Non-null while a replace
+// flush is still in flight, so a rejected write can restore the old account.
+let replaceSnapshot = null;
+// Offline-at-load sign-in retry: the pending first reconcile (see bootstrap).
+let bootCtx = null;
+let bootTimer = null;
+let bootDelay = 2000;
 
 function blank() {
   return {
@@ -62,7 +85,12 @@ function saveLocal() {
     localStorage.setItem(UI_KEY, JSON.stringify(doc.ui || {}));
     if (userId) {
       const { ui, ...data } = doc;
-      localStorage.setItem(cacheKey(userId), JSON.stringify({ doc: data, serverFp: [...serverFp] }));
+      const payload = JSON.stringify({ doc: data, serverFp: [...serverFp] });
+      localStorage.setItem(cacheKey(userId), payload);
+      // Durable mirror of the offline queue (js/idb.js): survives localStorage
+      // eviction and is read back when the primary copy is gone. Fire-and-
+      // forget — it must never slow a mutation down.
+      idbSet(cacheKey(userId), payload);
     }
   } catch (e) {
     console.error('store: failed to write local cache', e);
@@ -93,10 +121,14 @@ export function mutate(fn) {
   scheduleFlush();
 }
 
-// Replace every cloud-backed collection (future import); diffs sync the rest.
+// Replace every cloud-backed collection (import / demo reset); diffs sync the rest.
 export function replaceDoc(next) {
-  const ui = doc.ui;
-  doc = { ...blank(), ...next, version: 1, ui };
+  // Remember the pre-replace account so flush can roll back if the cloud
+  // rejects the replace (ISSUES.md #1/#3): a broken import must cost the user
+  // nothing, not wipe their existing sessions.
+  const { ui: _ui, ...snapshot } = doc;
+  replaceSnapshot = snapshot;
+  doc = { ...blank(), ...next, version: 1, ui: doc.ui };
   saveLocal();
   notify('local');
   scheduleFlush();
@@ -288,28 +320,39 @@ async function flush() {
       for (const key of serverFp.keys()) {
         if (!local.has(key) && !inFlight.has(key) && key !== 'settings') dels[key.slice(0, 1)].push(key);
       }
-      const jobs = [];
-      for (const t of ['s', 't', 'settings']) if (ups[t].length) jobs.push(writeUpserts(t, ups[t]));
-      for (const t of ['s', 't']) if (dels[t].length) jobs.push(writeDeletes(t, dels[t]));
-      if (!jobs.length) { setStatus('saved'); return; }
-      setStatus('saving');
-      const results = await Promise.all(jobs);
-      const failed = results.find(r => r && r.error);
-      if (failed) {
-        if (isTransient(failed.error)) {
-          setStatus('offline', failed.error);
-          scheduleRetry();
-        } else {
-          console.error('sync: server rejected a write', failed.error);
-          rejectedWrites++;
-          setStatus('error', failed.error);
-          const discard = new Set(results.flatMap(r => (r && r.error ? r.keys : [])));
-          const res = await pull({ discard });
-          saveLocal();
-          if (res && res.changed) notify('remote');
-        }
+      if (!ups.s.length && !ups.t.length && !ups.settings.length && !dels.s.length && !dels.t.length) {
+        replaceSnapshot = null;
+        setStatus('saved');
         return;
       }
+      setStatus('saving');
+      // Atomic replace-flush (ISSUES.md #1/#3): upserts are confirmed BEFORE
+      // any delete is issued. Parallel calls could delete the old rows and
+      // then fail to write the new ones, wiping the account on partial failure.
+      // Transient failures (offline / 5xx) just reschedule; permanent
+      // rejections roll back via flushFailed.
+      const upsFailed = [];
+      for (const t of ['s', 't', 'settings']) {
+        if (!ups[t].length) continue;
+        const r = await writeUpserts(t, ups[t]);
+        if (!r) continue;
+        if (isTransient(r.error)) { setStatus('offline', r.error); scheduleRetry(); return; }
+        upsFailed.push(r);
+        break; // fail fast: stop before any delete
+      }
+      if (upsFailed.length) { if (await flushFailed(upsFailed)) continue; return; }
+
+      const delFailed = [];
+      for (const t of ['s', 't']) {
+        if (!dels[t].length) continue;
+        const r = await writeDeletes(t, dels[t]);
+        if (!r) continue;
+        if (isTransient(r.error)) { setStatus('offline', r.error); scheduleRetry(); return; }
+        delFailed.push(r);
+        break;
+      }
+      if (delFailed.length) { if (await flushFailed(delFailed)) continue; return; }
+
       retryDelay = 2000;
       saveLocal();
     }
@@ -320,6 +363,31 @@ async function flush() {
   } finally {
     flushing = false;
   }
+}
+
+// A cloud write was rejected (non-transient). If this flush was carrying a
+// replace (import / demo reset), restore the pre-replace document: the user
+// keeps their old data, and the flush loop recomputes from the restored doc —
+// re-pushing the old rows and deleting any half-landed import rows. Otherwise
+// discard just the rejected keys and re-pull their server state.
+// Returns true when the flush loop should continue with recomputed work.
+async function flushFailed(results) {
+  const failed = results[0].error;
+  console.error('sync: server rejected a write', failed);
+  rejectedWrites++;
+  setStatus('error', failed);
+  const discard = new Set(results.flatMap(r => r.keys));
+  if (replaceSnapshot) {
+    doc = { ...blank(), ...replaceSnapshot, ui: doc.ui };
+    replaceSnapshot = null;
+    saveLocal();
+    notify('remote'); // screens re-render with the restored data
+    return true;      // loop recomputes: no re-entrant scheduleFlush from inside a flush
+  }
+  const res = await pull({ discard });
+  saveLocal();
+  if (res && res.changed) notify('remote');
+  return false;
 }
 
 function scheduleRetry() {
@@ -445,8 +513,24 @@ function onVisible() {
 
 // --- lifecycle -----------------------------------------------------------------
 
+// Reconnect: flush the offline queue as soon as the network (or, at load, the
+// first reconcile) can run — do not wait out the backoff timer.
+function onOnline() {
+  if (bootCtx) { clearTimeout(bootTimer); bootTimer = null; bootstrap(bootCtx); }
+  else if (userId && ready) { retryDelay = 2000; flush(); }
+}
+
+// `online` is a browser-only event; some non-browser harnesses alias window to
+// globalThis without EventTarget methods, so guard the wiring.
+const canListenOnline = typeof window !== 'undefined'
+  && typeof window.addEventListener === 'function'
+  && typeof window.removeEventListener === 'function';
+
 // Sign-in: hydrate from the device cache (instant paint), subscribe, then pull.
 // Returns { cloudEmpty } so the shell can offer the legacy-data migration.
+// Being offline at load is not an error: the cached document (localStorage,
+// else the IndexedDB mirror) paints immediately, keeps accepting writes, and
+// re-syncs when the connection returns.
 export async function startSync(uid) {
   if (userId === uid) return { cloudEmpty: false };
   stopSync();
@@ -455,7 +539,20 @@ export async function startSync(uid) {
   subscribedOnce = false;
   let hadCache = false;
   try {
-    const cached = JSON.parse(localStorage.getItem(cacheKey(uid)) || 'null');
+    let cached = null;
+    try {
+      cached = JSON.parse(localStorage.getItem(cacheKey(uid)) || 'null');
+    } catch (e) {
+      console.error('store: unreadable cache, ignoring', e);
+    }
+    if (!(cached && cached.doc)) {
+      // localStorage was evicted/cleared: fall back to the IndexedDB mirror
+      // (js/idb.js) so an offline queue written earlier is not lost.
+      const mirrored = await idbGet(cacheKey(uid));
+      if (mirrored) {
+        try { cached = JSON.parse(mirrored); } catch (e) { console.error('store: unreadable mirrored cache', e); }
+      }
+    }
     if (cached && cached.doc) {
       doc = { ...blank(), ...cached.doc };
       serverFp = new Map(cached.serverFp || []);
@@ -463,29 +560,62 @@ export async function startSync(uid) {
       notify('remote'); // instant paint from cache while the pull runs
     }
   } catch (e) {
-    console.error('store: unreadable cache, ignoring', e);
+    console.error('store: cache restore failed, ignoring', e);
   }
   channel = subscribeRealtime(uid);
   document.addEventListener('visibilitychange', onVisible);
+  if (canListenOnline) window.addEventListener('online', onOnline);
   setStatus('saving');
-  const res = await pull({ preferServer: !hadCache });
-  if (!res || uid !== userId) return { cloudEmpty: false };
-  if (!res.settingsFound && !serverFp.has('settings')) {
-    // Brand-new account: default master data (no demo sessions).
-    const defaults = defaultSettings(new Date().toISOString());
-    for (const [k, v] of Object.entries(defaults)) doc[k] = v;
+
+  // First full reconcile. If the device is offline at load this fails, leaves
+  // the cache painted (usable offline) and retries on a backoff timer.
+  const boot = { uid, hadCache, cloudEmpty: false };
+  bootCtx = boot;
+  bootDelay = 2000;
+  await bootstrap(boot);
+  return { cloudEmpty: boot.cloudEmpty };
+}
+
+// Runs the first full reconcile of a sign-in; sets `ready` on success. On
+// failure it schedules itself for retry while `bootCtx` stays set so
+// `onOnline` can trigger it immediately.
+async function bootstrap(boot) {
+  try {
+    const res = await pull({ preferServer: !boot.hadCache });
+    if (!res || boot.uid !== userId) { bootCtx = null; return; }
+    if (!res.settingsFound && !serverFp.has('settings')) {
+      // Brand-new account: default master data (no demo sessions).
+      const defaults = defaultSettings(new Date().toISOString());
+      for (const [k, v] of Object.entries(defaults)) doc[k] = v;
+    }
+    ready = true;
+    bootCtx = null;
+    bootDelay = 2000;
+    boot.cloudEmpty = res.sessionCount === 0 && res.txnCount === 0;
+    saveLocal();
+    notify('remote');
+    scheduleFlush();
+  } catch (e) {
+    console.error('sync: offline at sign-in, will retry', e);
+    setStatus('offline', e);
+    bootDelay = Math.min(bootDelay * 2, 30000);
+    clearTimeout(bootTimer);
+    bootTimer = setTimeout(() => {
+      bootTimer = null;
+      if (bootCtx && bootCtx.uid === userId) bootstrap(bootCtx);
+    }, bootDelay);
   }
-  ready = true;
-  saveLocal();
-  notify('remote');
-  scheduleFlush();
-  return { cloudEmpty: res.sessionCount === 0 && res.txnCount === 0 };
 }
 
 export function stopSync() {
   if (channel) { supabase.removeChannel(channel); channel = null; }
   document.removeEventListener('visibilitychange', onVisible);
+  if (canListenOnline) window.removeEventListener('online', onOnline);
   clearTimeout(retryTimer);
+  clearTimeout(bootTimer);
+  bootTimer = null;
+  bootCtx = null;
+  replaceSnapshot = null;
   userId = null;
   ready = false;
   serverFp = new Map();
@@ -497,6 +627,7 @@ export function stopSync() {
 
 export function clearUserCache(uid) {
   try { localStorage.removeItem(cacheKey(uid)); } catch (e) { console.error('store: cache clear failed', e); }
+  idbDel(cacheKey(uid)); // the mirror must not outlive a sign-out either
 }
 
 // Wait until every local change has reached the server (used before sign-out

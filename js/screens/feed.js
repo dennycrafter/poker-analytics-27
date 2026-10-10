@@ -36,7 +36,7 @@ export function sessionRowHtml(doc, s, netOverride = null) {
       <div class="row-title">${live}${esc(title)}</div>
       <div class="row-sub">
         ${icon('clock')}<span>${fmtDur(secs)}</span>
-        <span class="dotsep"></span>${icon('table')}<span>${s.table_size}-max</span>
+        <span class="dotsep"></span>${icon('table')}<span>${esc(s.table_size)}-max</span>
         ${loc ? `<span class="dotsep"></span>${icon('pin')}<span>${esc(loc.name)}</span>` : ''}
       </div>
     </div>
