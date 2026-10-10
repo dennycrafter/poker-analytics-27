@@ -13,6 +13,7 @@ import {
 } from '../../../src/lib/domain';
 import { fmtDateTime, fmtDur, fmtMoney, fmtTimer, fromLocalInput, moneyTone, parseAmount, toLocalInput } from '../../../src/lib/format';
 import { nameOf, parseCount, parseStakes, TABLE_SIZES, tableLabel } from '../../../src/lib/present';
+import { sellActionsOf, sellSummary } from '../../../src/lib/staking';
 import {
   breakSecondsNow, effectiveHands, hourlyRate, liveHourlyRate, netResult, playSeconds, stackBuyIn, stackCashedOut,
 } from '../../../src/lib/stats';
@@ -161,6 +162,7 @@ export default function SessionScreen() {
     onSave: raw => { const p = parseStakes(raw); if (!p) return 'Use SB/BB, e.g. 0.5/1.'; patch({ small_blind: p.sb, big_blind: p.bb }); return null; },
   });
   const openStack = () => router.push({ pathname: '/stack/[id]', params: { id: s.id } });
+  const openStaking = () => router.push({ pathname: '/staking/[id]', params: { id: s.id } });
 
   // --- rows ------------------------------------------------------------------
   const handsValue = s.hands_count_estimated
@@ -188,6 +190,7 @@ export default function SessionScreen() {
       <Row label="Prize" value={s.is_live ? 'On end' : money(s.prize)} onPress={s.is_live ? undefined : () => editAmount('Prize', 'prize')} />
       <Row label="Position" value={s.position === null ? '--' : String(s.position)} onPress={() => editCount('Position', 'position')} />
       <Row label="Entries" value={s.entries === null ? '--' : String(s.entries)} onPress={() => editCount('Entries', 'entries')} />
+      <Row label="Sell action" value={sellSummary(sellActionsOf(doc, s.id))} onPress={openStaking} />
     </>
   );
 
