@@ -17,7 +17,7 @@ import { IMPORT_FIELDS, analyzeCsv, buildImport, sessionFingerprint, draftNetRes
 import { importPokerNow } from '../pokernow-import.js';
 import { netResult } from '../stats.js';
 import { getLiveSession } from '../domain.js';
-import { fmtMoney } from '../format.js';
+import { getCurrency, fmtMoney } from '../format.js';
 
 let wiz = null;
 
