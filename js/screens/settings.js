@@ -1,6 +1,6 @@
 // Settings (brief 5.16): currency; manage Games / Locations / Tournament
 // types / Groups (add, rename, delete when unused); Export JSON; Import JSON;
-// Reset demo data. Currency, master data and notes sync via user_settings;
+// Load demo data. Currency, master data and notes sync via user_settings;
 // sessions and transactions via their own tables — all through the store.
 
 import { navigate } from '../router.js';
@@ -115,11 +115,11 @@ function importFile(file) {
 }
 
 function resetDemo() {
-  if (getLiveSession(getState())) { toast('End the live session before resetting'); return; }
+  if (getLiveSession(getState())) { toast('End the live session before loading demo data'); return; }
   confirmSheet({
-    title: 'Reset demo data?',
+    title: 'Load demo data?',
     message: 'This REPLACES all sessions, transactions, notes and settings in your account with the demo dataset (about 40 sessions). Export first if you want to keep your data.',
-    confirmLabel: 'Reset to demo', danger: true,
+    confirmLabel: 'Load demo', danger: true,
     onConfirm: () => applyReplacement(demoDoc(Date.now(), genId), 'Demo data loaded'),
   });
 }
@@ -143,10 +143,10 @@ export function SettingsScreen(root, doc) {
         ${row('export-txns', 'Export bankroll (CSV)', '')}
         ${row('import', 'Import JSON', '')}
         ${row('import-csv', 'Import CSV / PokerNow', '')}
-        ${row('reset', 'Reset demo data', '')}
+        ${row('reset', 'Load demo data', '')}
       </div>
       <input type="file" accept="application/json,.json" data-role="file" hidden>
-      <p class="hint" style="margin-top:12px">Import and Reset replace everything in your account (synced to all your devices). Filters and display preferences stay on this device.</p>
+      <p class="hint" style="margin-top:12px">Import and Load demo data replace everything in your account (synced to all your devices). Filters and display preferences stay on this device.</p>
       <div class="spacer-40"></div>
     </div>`;
   root.querySelector('[data-act=back]').addEventListener('click', () => navigate('/more'));
