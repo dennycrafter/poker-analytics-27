@@ -10,6 +10,7 @@ import { startLiveCash, startLiveTournament, logPastSession, getLiveSession, add
 import { openSellSheet } from './sell.js';
 import { makeSellAction, soldPercent } from '../staking.js';
 import { toLocalInputValue, fmtNum } from '../format.js';
+import { liveStartMode, LIVE_BACKDATE_MAX_SECONDS } from '../session-math.js';
 
 const STAKE_CHIPS = [[0.1, 0.2], [0.25, 0.5], [0.5, 1], [1, 2], [2, 5], [5, 10]];
 
@@ -341,8 +342,17 @@ export function StartScreen(root, doc, kind) {
       toast('A live session is already running');
       return;
     }
+    // A live timer runs from start_time, so a start picked days back would
+    // record a days-long session. Older starts go through "Log past session".
+    const mode = liveStartMode(state.__start, Date.now());
+    if (mode === 'future') { toast('Start time cannot be in the future'); return; }
+    if (mode === 'invalid') { toast('Enter a valid start time'); return; }
+    if (mode === 'past') {
+      toast(`Started over ${LIVE_BACKDATE_MAX_SECONDS / 3600}h ago — log it as a past session`);
+      state.past = true; render();
+      return;
+    }
     const startDate = state.__start || new Date();
-    if (startDate.getTime() > Date.now()) { toast('Start time cannot be in the future'); return; }
     let id;
     if (kind === 'cash') {
       id = startLiveCash({
