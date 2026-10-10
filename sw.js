@@ -15,7 +15,7 @@
 // Deploys: bump VERSION whenever any shell file changes. Static assets are
 // served cache-first, so without a bump returning visitors keep the old files.
 
-const VERSION = 'pa27-2026-10-09-stepc-1';
+const VERSION = 'pa27-2026-10-10-stepc-2';
 const CACHE = `pa27-shell-${VERSION}`;
 
 // Paths are relative to this file, so the app also works under a sub-path.
@@ -35,9 +35,13 @@ const SHELL = [
   'js/charts/svg.js',
   'js/cloud-map.js',
   'js/config.js',
+  'js/csv-import.js',
   'js/dates.js',
   'js/desktop.js',
   'js/domain.js',
+  'js/equity-state.js',
+  'js/equity-worker.js',
+  'js/equity.js',
   'js/filters.js',
   'js/format.js',
   'js/hours.js',
@@ -47,6 +51,7 @@ const SHELL = [
   'js/manage.js',
   'js/metrics.js',
   'js/motion.js',
+  'js/pokernow-import.js',
   'js/pwa.js',
   'js/rankings.js',
   'js/reports.js',
@@ -56,6 +61,7 @@ const SHELL = [
   'js/screens/calendar.js',
   'js/screens/detail.js',
   'js/screens/drill.js',
+  'js/screens/equity.js',
   'js/screens/feed.js',
   'js/screens/filter.js',
   'js/screens/live.js',
@@ -69,7 +75,9 @@ const SHELL = [
   'js/screens/start.js',
   'js/screens/stats.js',
   'js/screens/top10.js',
+  'js/screens/variance.js',
   'js/seed.js',
+  'js/session-math.js',
   'js/skeleton.js',
   'js/staking.js',
   'js/stats.js',
@@ -77,6 +85,7 @@ const SHELL = [
   'js/supabase-client.js',
   'js/tick.js',
   'js/ui.js',
+  'js/variance.js',
   'js/vendor/supabase.js',
 ];
 
