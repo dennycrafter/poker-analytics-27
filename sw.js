@@ -15,7 +15,7 @@
 // Deploys: bump VERSION whenever any shell file changes. Static assets are
 // served cache-first, so without a bump returning visitors keep the old files.
 
-const VERSION = 'pa27-2026-10-10-stepf-1';
+const VERSION = 'pa27-2026-10-10-it5-1';
 const CACHE = `pa27-shell-${VERSION}`;
 
 // Paths are relative to this file, so the app also works under a sub-path.
@@ -88,6 +88,7 @@ const SHELL = [
   'js/supabase-client.js',
   'js/tick.js',
   'js/ui.js',
+  'js/variance-tour.js',
   'js/variance.js',
   'js/vendor/supabase.js',
 ];
