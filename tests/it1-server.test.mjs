@@ -227,7 +227,9 @@ test('table: request hits the Anthropic Messages API with model, version header 
   assert.equal(capture[0].body.model, 'claude-sonnet-5-5');
   assert.equal(capture[0].init.headers['anthropic-version'], ANTHROPIC_VERSION);
   assert.equal(capture[0].init.headers['x-api-key'], ENV.ANTHROPIC_API_KEY);
-  assert.equal(capture[0].body.temperature, 0);
+  // claude-sonnet-5-5 rejects `temperature` with invalid_request_error
+  // ("temperature is deprecated for this model") — never send it.
+  assert.ok(!('temperature' in capture[0].body), 'request body must not carry the deprecated temperature param');
   assert.equal(capture[0].body.messages.length, 1);
   assert.equal(capture[0].body.messages[0].role, 'user');
 });
