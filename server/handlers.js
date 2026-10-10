@@ -241,7 +241,8 @@ export async function callAnthropic(fetchImpl, key, parts, maxTokens) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: maxTokens,
-        temperature: 0,
+        // NOTE: no `temperature` — claude-sonnet-5-5 rejects it with
+        // invalid_request_error ("temperature is deprecated for this model").
         messages: [{ role: 'user', content: parts }],
       }),
     });
