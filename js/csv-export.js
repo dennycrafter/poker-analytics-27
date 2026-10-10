@@ -70,7 +70,7 @@ export function sessionsCsv(doc, sessions = endedSessions(doc)) {
       hmsCell(duration),
       hmsCell(s.break_seconds),
       nameOf(doc, 'games', s.game_id),
-      cash ? `${s.small_blind ?? ''}/${s.big_blind ?? ''}` : '',
+      cash && (s.small_blind != null || s.big_blind != null) ? `${s.small_blind ?? ''}/${s.big_blind ?? ''}` : '',
       moneyCell(buyIn),
       moneyCell(cashedOut),
       moneyCell(netResult(doc, s)),

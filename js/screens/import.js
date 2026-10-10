@@ -9,7 +9,7 @@
 // change re-renders the route) does not throw away the chosen file or mapping.
 // It is reset when the route is left (hashchange) or a new file is picked.
 
-import { navigate, addCleanup } from '../router.js';
+import { navigate } from '../router.js';
 import { getState, importSessions } from '../store.js';
 import { icon } from '../icons.js';
 import { esc, toast } from '../ui.js';
@@ -20,6 +20,14 @@ import { getLiveSession } from '../domain.js';
 import { getCurrency, fmtMoney } from '../format.js';
 
 let wiz = null;
+
+// Reset the wizard when the hash leaves the import route. Registered once at
+// module load: a per-render listener is removed by the router's cleanup pass
+// before the same hashchange event reaches it (the router's own listener
+// registered first), so the reset never fired on route leave.
+window.addEventListener('hashchange', () => {
+  if (!location.hash.includes('/more/import')) wiz = null;
+});
 
 const FIELD_OPTIONS = [{ key: '', label: 'Ignore' }, ...IMPORT_FIELDS.map(f => ({ key: f.key, label: f.label }))];
 const PREVIEW_ROWS = 5;
@@ -133,6 +141,12 @@ function pnMeHtml() {
 function pnPreviewHtml() {
   const r = wiz.pn;
   const cur = wiz.currency;
+  // Surface what the store would refuse: sessions whose import_key the store
+  // has already recorded are skipped at commit — say so before the commit.
+  const keys = getState().import_keys || {};
+  const isDup = d => d.source && d.source.import_key && keys[d.source.import_key];
+  const fresh = r.sessions.filter(d => !isDup(d));
+  const dups = r.sessions.length - fresh.length;
   const rows = r.sessions.map(d => {
     const s = d.session;
     const bits = [
@@ -140,20 +154,26 @@ function pnPreviewHtml() {
       s.kind === 'tournament' ? 'Tournament' : 'Cash',
       s.game_name || '', s.location_name || '',
       s.is_live ? 'live' : fmtNet(draftNetResult(s), cur),
+      isDup(d) ? '⚠️ already imported from this file' : '',
     ].filter(Boolean);
     return `<div class="field-row" style="cursor:default"><span class="field-name">${esc(bits.join(' · '))}</span></div>`;
   }).join('');
-  const live = r.sessions.some(d => d.session.is_live);
+  const live = fresh.some(d => d.session.is_live);
   const liveWarn = live && getLiveSession(getState())
     ? '<div class="import-issue">⚠️ You already have a live session. This import includes another one — it will be skipped unless you end yours first.</div>'
     : '';
   const errors = r.errors.map(w => `<div class="import-issue">⚠️ ${esc(w.message || String(w))}</div>`).join('');
-  const stackBits = r.sessions.reduce((n, d) => n + (d.stack_events ? d.stack_events.length : 0), 0);
+  const stackBits = fresh.reduce((n, d) => n + (d.stack_events ? d.stack_events.length : 0), 0);
+  const headBits = [
+    `${fresh.length} of ${r.sessions.length} session${r.sessions.length === 1 ? '' : 's'} ready`,
+    dups ? `${dups} already imported` : '',
+    stackBits ? `${stackBits} stack events` : '',
+  ].filter(Boolean).join(' · ');
   return `
-    <div class="section-label" style="padding-left:0">Preview — ${r.sessions.length} session${r.sessions.length === 1 ? '' : 's'}${stackBits ? `, ${stackBits} stack events` : ''}</div>
+    <div class="section-label" style="padding-left:0">Preview — ${esc(headBits)}</div>
     <div class="rows" style="padding:0">${rows || '<div class="empty-block">No sessions found in this file.</div>'}</div>
     ${liveWarn}${errors}${warnList(r.warnings)}
-    ${r.sessions.length ? `<button class="btn-primary" data-act="commit" style="margin-top:12px">Import ${r.sessions.length} session${r.sessions.length === 1 ? '' : 's'}</button>` : ''}
+    ${fresh.length ? `<button class="btn-primary" data-act="commit" style="margin-top:12px">Import ${fresh.length} session${fresh.length === 1 ? '' : 's'}</button>` : ''}
     <button class="btn-danger" data-act="restart" style="margin-top:10px">Choose a different file</button>`;
 }
 
@@ -225,7 +245,8 @@ function csvPreviewHtml() {
   return `
     <div class="section-label" style="padding-left:0">Preview — ${esc(bits)} · ${esc(netBits)}</div>
     <div class="rows" style="padding:0">${rows || '<div class="empty-block">No rows can be imported with this mapping.</div>'}</div>
-    ${meta}${rejects}${moreRejected}${mappingErrorsHtml(b.mappingErrors)}`;
+    ${meta}${rejects}${moreRejected}${mappingErrorsHtml(b.mappingErrors)}
+    ${b.accepted.length ? `<button class="btn-primary" data-act="commit" style="margin-top:12px">Import ${b.accepted.length} session${b.accepted.length === 1 ? '' : 's'}</button>` : ''}`;
 }
 
 // --- done -------------------------------------------------------------------------
@@ -246,12 +267,6 @@ function doneHtml() {
 export function ImportScreen(root, doc) {
   if (!wiz) wiz = { step: 'pick', bankrollId: null, mePicks: {}, nickname: '', dateOrder: null };
   wiz.currency = getCurrency(doc).toUpperCase();
-
-  // Leaving the route resets the wizard; store notifications re-render the
-  // route and must not.
-  const onHash = () => { if (!location.hash.includes('/more/import')) wiz = null; };
-  window.addEventListener('hashchange', onHash);
-  addCleanup(() => window.removeEventListener('hashchange', onHash));
 
   const body = {
     pick: () => pickHtml(doc),
@@ -326,6 +341,11 @@ export function ImportScreen(root, doc) {
   // commit (shared by PokerNow preview and CSV mapping)
   const commit = root.querySelector('[data-act=commit]');
   if (commit) commit.addEventListener('click', () => commitImport(root, doc));
+
+  // The map step's preview is a patch target (column/date/header changes swap
+  // it without a route re-render) — populate it after every shell render so
+  // the preview and its commit button exist from the first paint onward.
+  if (wiz.step === 'map') rebuildPreview(root, doc);
 }
 
 // Re-render the wizard in place (same route, same root).
@@ -390,7 +410,14 @@ function reanalyze(root, doc, hasHeader) {
   }
   wiz.analysis = a;
   wiz.mapping = a.mapping.slice();
+  const wasMap = wiz.step === 'map';
   wiz.step = 'map';
+  if (!wasMap) {
+    // Pick → map transition: the pick DOM has no preview container, so the
+    // full map shell must render before the preview can be patched in.
+    renderRouteImport(root, doc);
+    return;
+  }
   rebuildPreview(root, doc);
 }
 
@@ -406,7 +433,13 @@ function rebuildPreview(root, doc) {
   });
   if (wiz.step === 'map') {
     const p = root.querySelector('[data-role=preview]');
-    if (p) p.innerHTML = csvPreviewHtml();
+    if (p) {
+      p.innerHTML = csvPreviewHtml();
+      // The preview is patched after the route render's binding pass, so the
+      // freshly inserted commit button needs its own listener each time.
+      const commit = p.querySelector('[data-act=commit]');
+      if (commit) commit.addEventListener('click', () => commitImport(root, doc));
+    }
   }
 }
 

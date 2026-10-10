@@ -257,9 +257,9 @@ test('semicolon + decimal comma + dotted dates parse correctly', () => {
 
 console.log('Malformed rows (malformed.csv)');
 const bad = run('malformed.csv');
-test('one good row, nine rejections, every one with its line and reason', () => {
-  assert.equal(bad.summary.accepted, 1);
-  assert.equal(bad.summary.rejected, 9);
+test('one good row, one stakes-less row, eight rejections, every one with its line and reason', () => {
+  assert.equal(bad.summary.accepted, 2);
+  assert.equal(bad.summary.rejected, 8);
   const expected = {
     3: ['Expected 8 columns, found 5'],
     4: ['Buy-in: "abc" is not an amount'],
@@ -267,7 +267,6 @@ test('one good row, nine rejections, every one with its line and reason', () => 
     6: ['Table size: Table size must be between 2 and 10'],
     7: ['Expected 8 columns, found 9'],
     8: ['Small blind is bigger than the big blind'],
-    9: ['Big blind is missing (map Stakes or Big blind)'],
     10: ['Buy-in cannot be negative'],
     11: ['Unterminated quoted field (opened on line 11)'],
   };
@@ -285,7 +284,7 @@ test('a row can carry several reasons at once', () => {
   const r = importCsv('Date,Start,End,Stakes,Buy-in,Cashed out,Hands\n2026-05-01,19:00,22:00,x,abc,-1,1.5\n', { nowMs: NOW });
   assert.deepEqual([...reasonsAt(r, 2)].sort(), [
     'Hands count: "1.5" is not a whole number', 'Buy-in: "abc" is not an amount', 'Cashed out cannot be negative',
-    'Stakes "x" are not readable (expected SB/BB, e.g. 0.1/0.2)', 'Big blind is missing (map Stakes or Big blind)',
+    'Stakes "x" are not readable (expected SB/BB, e.g. 0.1/0.2)',
   ].sort());
 });
 
