@@ -19,7 +19,10 @@ export function fmtNum(n) {
 export function fmtMoney(amount, currency = 'EUR') {
   if (amount === null || amount === undefined || !Number.isFinite(Number(amount))) return '--';
   const a = Number(amount);
-  return (a < 0 ? '-' : '') + currency + ' ' + fmtNum(Math.abs(a));
+  // Round to cents before the sign check so a tiny negative (-0.004) cannot
+  // render as a negative zero (ISSUES.md #9).
+  const cents = Math.round(a * 100);
+  return (cents < 0 ? '-' : '') + currency + ' ' + fmtNum(Math.abs(cents) / 100);
 }
 
 export function moneyClass(amount) {
