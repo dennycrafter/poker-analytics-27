@@ -1216,3 +1216,149 @@ button.hm-cell:focus-visible, .hm-cell.sel { outline: 2px solid var(--text-prima
   .btn-primary:active, .btn-secondary:active, .btn-danger:active, .chip:active, .btn-icon:active { transform: none; }
   .metric-tabs { scroll-behavior: auto; }
 }
+
+/* ---------- STEP C: desktop layout (>= 880px) ----------
+   Below the breakpoint nothing in this block applies: the phone column,
+   bottom tab bar and full-screen modal routes are unchanged. The breakpoint
+   must match DESKTOP_MIN in js/layout.js. */
+
+.sidebar-brand { display: none; }
+
+@media (min-width: 880px) {
+  :root {
+    --sidebar-w: 232px;
+    --content-w: 1040px;
+    --pad-x: 24px;
+  }
+
+  #phone {
+    max-width: none;
+    margin: 0;
+    padding-left: var(--sidebar-w);
+    border: none;
+  }
+
+  #screen { padding-bottom: 48px; }
+
+  /* Tab screens get a centered, wider column. Modal routes are dialogs. */
+  #screen > :not(.modal-screen) { max-width: var(--content-w); margin-left: auto; margin-right: auto; }
+  #live-banner-slot .live-banner { padding-left: 32px; padding-right: 32px; }
+
+  /* ----- sidebar: the same <nav>, links and aria-current as the tab bar ----- */
+  #tabbar {
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: auto;
+    width: var(--sidebar-w);
+    max-width: none;
+    height: auto;
+    margin: 0;
+    padding: 20px 12px;
+    flex-direction: column;
+    gap: 2px;
+    border-top: none;
+    border-right: 1px solid var(--border);
+    background: var(--bg-primary);
+  }
+  #tabbar .tab-indicator { display: none; }
+  #tabbar .tab {
+    flex: none;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 14px;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  #tabbar .tab .icon svg, #tabbar .tab svg.icon { width: 20px; height: 20px; }
+  #tabbar .tab.active { color: var(--accent); background: var(--accent-dim); }
+  #tabbar .tab.active svg { animation: none; }
+  #tabbar .tab:focus-visible { outline-offset: -2px; }
+
+  .sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 10px 24px;
+  }
+  .sidebar-logo {
+    width: 32px; height: 32px;
+    border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .sidebar-name { font-size: 15px; font-weight: 500; letter-spacing: 0.01em; }
+
+  /* ----- wider content ----- */
+  .stat-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    column-gap: 32px;
+  }
+  .stat-section > .month-head { grid-column: 1 / -1; }
+
+  .cal-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    column-gap: 32px;
+  }
+  .cal-list > .month-head { grid-column: 1 / -1; }
+  .metric-tabs { flex-wrap: wrap; overflow-x: visible; row-gap: 4px; }
+
+  .hm-months { grid-template-columns: repeat(4, 1fr); gap: 20px 28px; }
+  .hm-mgrid { grid-template-columns: repeat(12, 1fr); gap: 10px; }
+
+  .rep-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 40px; align-items: start; }
+  .rep-list > :not(.rep-section), .rep-list > .rep-section:has(.rep-hour-chart) { grid-column: 1 / -1; }
+
+  .stat-detail .chart-card, .bank-card { padding: 16px 16px 10px; }
+
+  /* ----- modal routes: centered card over a dimmed backdrop ----- */
+  body.modal-open #screen::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.62);
+    z-index: 55;
+    animation: fade-in 0.15s ease-out;
+  }
+  .modal-screen {
+    inset: 32px 32px 32px calc(var(--sidebar-w) + 32px);
+    margin: auto;
+    width: min(560px, calc(100vw - var(--sidebar-w) - 64px));
+    height: min(860px, calc(100dvh - 64px));
+    max-width: none;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+    z-index: 60;
+  }
+  .modal-screen:focus { outline: none; }
+  /* Desktop shows classic scrollbars; keep them on-theme inside dialogs. */
+  .modal-screen, .modal-screen * { scrollbar-color: #3a3a3a transparent; scrollbar-width: thin; }
+  .modal-screen .topbar { border-radius: 18px 18px 0 0; }
+  .modal-screen .sticky-end { border-radius: 0 0 18px 18px; }
+
+  /* ----- sheets become centered dialogs; toast clears the sidebar ----- */
+  .sheet-backdrop { align-items: center; padding-left: var(--sidebar-w); }
+  .sheet { max-width: 520px; border-radius: 18px; border: 1px solid var(--border); padding-bottom: 20px; }
+  .toast { left: calc(50% + var(--sidebar-w) / 2); bottom: 32px; }
+}
+
+/* Hover affordances only where a mouse can hover, and only on desktop. */
+@media (min-width: 880px) and (hover: hover) {
+  #tabbar .tab:not(.active):hover { color: var(--text-primary); background: #ffffff0a; }
+  .session-row:hover, .simple-row:hover, .stat-row:hover, .field-row:hover,
+  .cal-row:not(.disabled):hover, .rep-bucket:hover, .sheet-row:hover, .rep-head:hover {
+    background-color: #ffffff08;
+  }
+  .hm-cell:not(.blank):not(.future):hover { outline: 1px solid var(--text-secondary); outline-offset: 1px; }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .topbtn:hover, .btn-icon:hover { color: var(--accent); }
+}

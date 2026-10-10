@@ -8,6 +8,7 @@ import { icon } from '../icons.js';
 import { esc, toast, openSheet, confirmSheet, textSheet } from '../ui.js';
 import { fmtMoney, moneyClass, fmtDateShort, getCurrency, toLocalInputValue, fromLocalInputValue, fmtNum } from '../format.js';
 import { lineChart } from '../charts/svg.js';
+import { chartBox } from '../layout.js';
 import { TXN_KINDS, txnSigned, signedAmount, transactionError, bankrollSummary, bankrollSeries, rorBand, bankrollTransactions } from '../bankroll.js';
 import { addTransaction, updateTransaction, deleteTransaction, addBankroll, renameMasterItem, setDefaultBankroll, deleteMasterItem } from '../domain.js';
 import { masterNameError, masterDeleteError } from '../manage.js';
@@ -31,7 +32,7 @@ function rorHtml(ror) {
 
 function chartHtml(doc, bankrollId) {
   const pts = bankrollSeries(doc, bankrollId).map(p => ({ x: p.t, y: p.y }));
-  return lineChart({ points: pts, height: 140 });
+  return lineChart({ points: pts, ...chartBox(340, 140) });
 }
 
 export function defaultBankrollId(doc) {

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Poker Analytics 27 mark: a chip ring with a rising results line. -->
+  <rect width="512" height="512" rx="112" fill="#0a0a0a"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#4ade80" stroke-opacity="0.22" stroke-width="22"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#4ade80" stroke-width="22" stroke-dasharray="40 38.5" stroke-opacity="0.55"/>
+  <path d="M170 312L222 262L262 290L344 196" fill="none" stroke="#4ade80" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="344" cy="196" r="20" fill="#4ade80"/>
+</svg>
