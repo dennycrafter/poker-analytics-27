@@ -13,6 +13,7 @@ import { ReportsScreen, ReportDetailScreen } from './screens/reports.js';
 import { StatsScreen, StatDetailScreen } from './screens/stats.js';
 import { BankrollScreen, BankrollDetailScreen } from './screens/bankroll.js';
 import { SettingsScreen, MasterListScreen } from './screens/settings.js';
+import { ImportScreen } from './screens/import.js';
 import { PlayersScreen, PlayerDetailScreen } from './screens/players.js';
 import { Top10Screen } from './screens/top10.js';
 import { VarianceScreen } from './screens/variance.js';
@@ -32,6 +33,7 @@ const ROUTES = [
   { re: /^\/more\/bankroll$/, tab: 'more', render: (r, d) => BankrollScreen(r, d) },
   { re: /^\/more\/bankroll\/([A-Za-z0-9_-]+)$/, tab: 'more', render: (r, d, m) => BankrollDetailScreen(r, d, m[1]) },
   { re: /^\/more\/settings$/, tab: 'more', render: (r, d) => SettingsScreen(r, d) },
+  { re: /^\/more\/import$/, tab: 'more', render: (r, d) => ImportScreen(r, d) },
   { re: /^\/more\/settings\/(games|locations|tournament_types|groups)$/, tab: 'more', render: (r, d, m) => MasterListScreen(r, d, m[1]) },
   { re: /^\/more\/top10$/, tab: 'more', render: (r, d) => Top10Screen(r, d) },
   { re: /^\/more\/variance$/, tab: 'more', render: (r, d) => VarianceScreen(r, d) },

@@ -17,6 +17,9 @@ import {
   stableStringify, sessionToRow, rowToSessionParts, transactionToRow, rowToTransaction,
   settingsToRow, applySettingsRow, defaultSettings,
 } from './cloud-map.js';
+import { sessionDbError } from './backup.js';
+import { sessionFingerprint, draftNetResult } from './csv-import.js';
+import { netResult } from './stats.js';
 
 // Sync & conflict policy (STEP D), also logged in README.md "Offline and sync":
 //  - The cloud is the source of truth; screens read a synchronous in-memory
@@ -69,6 +72,7 @@ function blank() {
     bankrolls: [], locations: [], games: [], tournament_types: [], groups: [],
     sessions: [], stack_events: [], sell_actions: [], transactions: [],
     player_notes: [], hand_histories: [],
+    import_keys: {},   // PokerNow import_key -> session id (per-user cache)
     ui: loadUi(),
   };
 }
@@ -646,4 +650,141 @@ export async function whenSaved(timeoutMs = 10000) {
     scheduleFlush();
     await new Promise(r => setTimeout(r, 150));
   }
+}
+
+
+// --- import (STEP E) ---------------------------------------------------------
+
+// Additive import path for the CSV and PokerNow importers (js/csv-import.js,
+// js/pokernow-import.js). Resolves ref names to ids, assigns ids/timestamps
+// and lands the whole batch in ONE mutate -> one flush -> one upsert batch per
+// table. Rejections are per-row and honest: a rejected draft is skipped with a
+// reason, valid rows in the same batch still import, and nothing is
+// half-written (a draft is fully built before the document changes).
+//
+// Drafts come in two shapes, discriminated by `source`:
+//   - CSV drafts { session, refs, net_result, fingerprint, line } — the app
+//     contract is enforced here: is_live=false, tracked_via_stack=false,
+//     paused_at=null (imported cash money lives in the buy_in column).
+//   - PokerNow drafts { session, stack_events, source{import_key}, line } —
+//     is_live/tracked_via_stack come from the parser; stack events are given
+//     ids and written for live sessions.
+//
+// Dedupe layers:
+//   - fingerprint (kind, start minute, duration, net) against the existing
+//     document and within the batch — the same identity the preview uses,
+//   - source.import_key (PokerNow): stored on doc.import_keys { key -> id }.
+//     Device-local on purpose — it rides the per-user offline cache, not a
+//     cloud column, so re-importing the same file on another device dedupes
+//     by fingerprint instead. Registry entries pointing at deleted sessions
+//     are pruned here, making a deliberate delete-then-re-import work.
+//   - the one-live-session rule: live drafts are refused while any other
+//     session is live (the importer only warns; the store enforces).
+//
+// Rows the database would refuse are rejected with the same guard the JSON
+// import uses (sessionDbError), so an import can never produce a row the
+// flush would get rejected.
+export function importSessions(drafts, { bankrollId } = {}) {
+  const imported = [];
+  const skipped = [];
+  mutate(d => {
+    d.import_keys = d.import_keys || {};
+    // Prune registry entries whose session is gone (deleted after an import).
+    const sessionIds = new Set(d.sessions.map(s => s.id));
+    for (const key of Object.keys(d.import_keys)) {
+      if (!sessionIds.has(d.import_keys[key])) delete d.import_keys[key];
+    }
+    const now = new Date().toISOString();
+    let live = d.sessions.find(s => s.is_live) || null;
+    const known = new Set(d.sessions.map(s => sessionFingerprint(s, netResult(d, s))));
+
+    // Find-or-create a master-data item by name (case-insensitive). The first
+    // bankroll ever created becomes the default.
+    const master = (list, name) => {
+      const clean = String(name ?? '').replace(/\s+/g, ' ').trim();
+      if (!clean) return null;
+      const found = d[list].find(x => (x.name || '').toLowerCase() === clean.toLowerCase());
+      if (found) return found;
+      const item = { id: genId(), name: clean, created_at: now, updated_at: now };
+      if (list === 'bankrolls' && !d[list].length) item.is_default = true;
+      d[list].push(item);
+      return item;
+    };
+    // Bankroll for a row: the per-row Bankroll column wins, then the screen's
+    // choice, then the account default — and a brand-new account gets a
+    // default bankroll rather than a dangling id.
+    const resolveBankroll = (name) => {
+      const byName = master('bankrolls', name);
+      if (byName) return byName.id;
+      if (bankrollId && d.bankrolls.some(b => b.id === bankrollId)) return bankrollId;
+      const def = d.bankrolls.find(b => b.is_default) || d.bankrolls[0];
+      if (def) return def.id;
+      const bk = { id: genId(), name: 'Live', is_default: true, created_at: now, updated_at: now };
+      d.bankrolls.push(bk);
+      return bk.id;
+    };
+
+    for (const draft of Array.isArray(drafts) ? drafts : []) {
+      const line = draft && draft.line;
+      const skip = reason => skipped.push({ line, reason });
+      const session = draft && draft.session;
+      if (!session || typeof session !== 'object' || !session.kind
+          || !session.start_time || !Number.isFinite(Date.parse(session.start_time))) {
+        skip('Row is not a readable session'); continue;
+      }
+      const dbError = sessionDbError(session);
+      if (dbError) { skip(dbError); continue; }
+
+      const isPokerNow = Boolean(draft.source);
+      if (!isPokerNow) {
+        // E1 contract: generic CSV imports are always ended direct-money rows.
+        session.is_live = false;
+        session.tracked_via_stack = false;
+        session.paused_at = null;
+      }
+      const importKey = isPokerNow && draft.source.import_key ? String(draft.source.import_key) : null;
+      if (importKey && d.import_keys[importKey]) { skip('Already imported from this file'); continue; }
+      if (session.is_live && live) {
+        skip(`Another session is already live${live.start_time ? ` (started ${live.start_time.slice(0, 16).replace('T', ' ')})` : ''} — end it before importing this one`);
+        continue;
+      }
+
+      const net = Number.isFinite(draft.net_result) ? draft.net_result
+        : Number.isFinite(draftNetResult(session)) ? draftNetResult(session) : 0;
+      const fingerprint = draft.fingerprint || sessionFingerprint(session, net);
+      if (known.has(fingerprint)) { skip('Matches a session you already have'); continue; }
+      known.add(fingerprint);
+
+      const id = genId();
+      const refs = { ...(draft.refs || {}) };
+      if (isPokerNow) {
+        // PokerNow drafts carry display names on the session (game_name /
+        // location_name); resolve them to ids and strip them — cloud rows
+        // keep only the *_id columns.
+        refs.game = refs.game || session.game_name || null;
+        refs.location = refs.location || session.location_name || null;
+      }
+      const row = {
+        ...session,
+        id,
+        game_id: refs.game ? master('games', refs.game)?.id ?? null : null,
+        location_id: refs.location ? master('locations', refs.location)?.id ?? null : null,
+        bankroll_id: resolveBankroll(refs.bankroll),
+        group_id: refs.group ? master('groups', refs.group)?.id ?? null : null,
+        tournament_type_id: refs.tournament_type ? master('tournament_types', refs.tournament_type)?.id ?? null : null,
+        created_at: now,
+        updated_at: now,
+      };
+      if (isPokerNow) { delete row.game_name; delete row.location_name; }
+      d.sessions.push(row);
+      for (const e of Array.isArray(draft.stack_events) ? draft.stack_events : []) {
+        if (!e || !['buy_in', 'top_up', 'cash_out'].includes(e.kind)) continue;
+        d.stack_events.push({ ...e, id: genId(), session_id: id });
+      }
+      if (importKey) d.import_keys[importKey] = id;
+      if (session.is_live) live = row;
+      imported.push({ id, line });
+    }
+  });
+  return { imported, skipped };
 }

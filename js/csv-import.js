@@ -779,9 +779,12 @@ function normalizeRow(cells, col, ctx) {
     const bbCol = nonNegative('big_blind', amount('big_blind'));
     if (sbCol !== null) sb = sbCol;
     if (bbCol !== null) bb = bbCol;
-    if (bb === null) reasons.push('Big blind is missing (map Stakes or Big blind)');
-    else if (bb <= 0) reasons.push('Big blind must be more than 0');
-    else if (sb === null) { sb = round2(bb / 2); warnings.push('No small blind; assumed half the big blind'); } else if (sb > bb) reasons.push('Small blind is bigger than the big blind');
+    // An ABSENT stakes value is legal — PokerNow ledger imports (no game log)
+    // and some trackers produce cash sessions without blinds, and the store
+    // accepts them. Only a present-but-invalid stakes value rejects.
+    if (bb !== null && bb <= 0) reasons.push('Big blind must be more than 0');
+    else if (bb !== null && sb === null) { sb = round2(bb / 2); warnings.push('No small blind; assumed half the big blind'); }
+    else if (bb !== null && sb !== null && sb > bb) reasons.push('Small blind is bigger than the big blind');
 
     const buyIn = nonNegative('buy_in', amount('buy_in'));
     let cashedOut = nonNegative('cashed_out', amount('cashed_out'));

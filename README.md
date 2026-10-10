@@ -114,3 +114,43 @@ js/
 Buy-in single source of truth: live-tracked cash sessions derive buy-in from
 stack events (`tracked_via_stack = true`); past sessions store it directly.
 Derived values (`net_result`, `hours`, `hourly_rate`, ...) are never stored.
+
+## Import and export
+
+All of it lives in **Settings → Data**. Nothing is uploaded: files are parsed
+on the device, and only the resulting rows sync like any other write.
+
+- **Import CSV / PokerNow** (`#/more/import`): a preview-first wizard.
+  - PokerNow exports are detected automatically — drop the ledger CSV and,
+    if you exported one, the full log (money and identity are more precise
+    with it). If the file does not say which player is you, the wizard asks:
+    pick yourself per table (a shared nickname) or type your nickname. The
+    parser's warnings are shown, not swallowed.
+  - Any other CSV opens the **column mapper**: every column gets a dropdown
+    of app fields (sensible guesses pre-selected), a "first row is headers"
+    toggle, and a Day/Month/Year toggle when the date order is ambiguous.
+    Times without a zone are read as local time; rows in another currency
+    are rejected, not converted.
+  - The **preview** shows how many rows will import, the first rows, and the
+    honest rejects with line numbers (unreadable values, table size outside
+    2–10, rows matching sessions you already have). Nothing is written until
+    you confirm. A rejected row never blocks valid ones, and a batch is
+    saved as one unit — no half-committed imports.
+  - **No duplicate imports:** re-importing the same file is a no-op
+    (PokerNow imports are remembered per file; generic rows are matched by
+    kind, start minute, duration and net). Deleting a session and importing
+    its file again works — the memory of the old import is pruned.
+  - Only one live session can exist; a live PokerNow seat is refused with a
+    reason while another session is live.
+- **Export sessions (CSV) / Export bankroll (CSV):** the same headers the
+  importer maps, so an export re-imports cleanly — the round trip is
+  asserted by the test suite. JSON export/import (full-account backup,
+  shared with the native app) is unchanged.
+- **Sample files:** `samples/tracker-sessions.csv` (a generic tracker export
+  with one broken row and one duplicate) and `samples/pokernow-ledger.csv`
+  + `samples/pokernow-log.csv`. Importing them end-to-end is verified by
+  `node tests/stepe-samples.test.mjs`.
+
+Postgres note: PokerNow dedupe keys ride the per-user offline cache on each
+device, so dedupe is strongest on the device that did the import; other
+devices still catch duplicates by the session fingerprint.

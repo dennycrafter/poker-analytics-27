@@ -11,6 +11,7 @@ import { getCurrency } from '../format.js';
 import { setCurrency, addMasterItem, renameMasterItem, deleteMasterItem, getLiveSession } from '../domain.js';
 import { MASTER_META, CURRENCIES, masterUsage, masterNameError, masterDeleteError, currencyError } from '../manage.js';
 import { exportPayload, exportFilename, parseImport, demoDoc } from '../backup.js';
+import { sessionsCsv, transactionsCsv, csvExportFilename } from '../csv-export.js';
 
 const MANAGED = ['games', 'locations', 'tournament_types', 'groups'];
 
@@ -52,6 +53,37 @@ function downloadJson(doc) {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   toast(`Exported ${doc.sessions.length} sessions`);
+}
+
+// CSV exports (STEP E): same headers the importer maps, so a round trip works.
+function downloadText(filename, text, mime) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function exportSessionsCsv() {
+  const doc = getState();
+  const csv = sessionsCsv(doc);
+  if (!csv) { toast('No ended sessions to export yet'); return; }
+  downloadText(csvExportFilename('sessions'), csv, 'text/csv');
+  toast(`Exported ${sessionsCount(doc)} ended session${sessionsCount(doc) === 1 ? '' : 's'}`);
+}
+
+function exportTxnsCsv() {
+  const doc = getState();
+  const csv = transactionsCsv(doc);
+  if (!csv) { toast('No bankroll transactions to export yet'); return; }
+  downloadText(csvExportFilename('transactions'), csv, 'text/csv');
+  toast('Exported bankroll transactions');
+}
+
+function sessionsCount(doc) {
+  const live = getLiveSession(doc);
+  return doc.sessions.length - (live ? 1 : 0);
 }
 
 // Apply a whole replacement document (import / demo reset) and wait for the
@@ -107,7 +139,10 @@ export function SettingsScreen(root, doc) {
       <div class="section-label" style="padding-left:0">Data</div>
       <div class="rows" style="padding:0">
         ${row('export', 'Export all data (JSON)', '')}
+        ${row('export-csv', 'Export sessions (CSV)', '')}
+        ${row('export-txns', 'Export bankroll (CSV)', '')}
         ${row('import', 'Import JSON', '')}
+        ${row('import-csv', 'Import CSV / PokerNow', '')}
         ${row('reset', 'Reset demo data', '')}
       </div>
       <input type="file" accept="application/json,.json" data-role="file" hidden>
@@ -120,6 +155,9 @@ export function SettingsScreen(root, doc) {
   for (const k of MANAGED) on('list:' + k, () => navigate('/more/settings/' + k));
   on('bankrolls', () => navigate('/more/bankroll'));
   on('export', () => downloadJson(getState()));
+  on('export-csv', exportSessionsCsv);
+  on('export-txns', exportTxnsCsv);
+  on('import-csv', () => navigate('/more/import'));
   const file = root.querySelector('[data-role=file]');
   file.addEventListener('change', () => { if (file.files[0]) importFile(file.files[0]); file.value = ''; });
   on('import', () => file.click());
