@@ -1,5 +1,7 @@
-// More: account, currency (synced via user_settings like the web), sync
-// status and sign-out. Bankroll, Top 10 and Players are web-only (README).
+// More: navigation to the money and analytics screens, account, currency
+// (synced via user_settings like the web), sync status and sign-out. Players,
+// the variance simulator, the equity calculator and data export are web-only.
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 
@@ -41,8 +43,13 @@ export default function MoreScreen() {
               onSave: v => { const c = v.trim().toUpperCase(); if (!/^[A-Z]{3}$/.test(c)) return 'Use a three-letter code.'; setCurrency(c); return null; } });
           },
         })} />
+        <SectionHeader title="Explore" />
+        <Row label="Bankroll" onPress={() => router.push('/bankroll')} />
+        <Row label="Top 10" onPress={() => router.push('/top10')} />
+        <Row label="Reports" onPress={() => router.push('/reports')} />
+        <Row label="Settings" onPress={() => router.push('/settings')} />
         <Text style={[type.small, { paddingHorizontal: PAD, paddingTop: 12 }]}>
-          Bankroll, reports, Top 10, players and data export are available in the web app with the same account.
+          Players, the variance simulator, the equity calculator and data export are available in the web app with the same account.
         </Text>
         <ErrorText text={error} />
         <View style={{ padding: PAD }}>
