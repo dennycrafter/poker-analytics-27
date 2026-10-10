@@ -1362,3 +1362,13 @@ button.hm-cell:focus-visible, .hm-cell.sel { outline: 2px solid var(--text-prima
   .btn-primary:hover { filter: brightness(1.08); }
   .topbtn:hover, .btn-icon:hover { color: var(--accent); }
 }
+
+/* Import screen (STEP E): honest per-row rejections and parser warnings. */
+.import-warnings { margin-top: 12px; display: grid; gap: 6px; }
+.import-issue {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border-left: 2px solid var(--text-tertiary);
+}

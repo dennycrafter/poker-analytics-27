@@ -329,10 +329,12 @@ test('c1: realtime CHANNEL_ERROR marks offline; SUBSCRIBED after reconnect pulls
 
 // --- shell + policy ---------------------------------------------------------------
 
-test('d1: sw.js precaches the offline-queue module and VERSION names this step', async () => {
+test('d1: sw.js precaches the offline-queue module and VERSION names the current step', async () => {
   const { readFileSync } = await import('node:fs');
   const sw = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
-  assert.match(sw, /const VERSION = 'pa27-2026-10-10-stepd-1';/);
+  // STEP D pinned the exact string it shipped; later steps legitimately bump
+  // the version when the shell changes, so assert the step-version scheme.
+  assert.match(sw, /const VERSION = 'pa27-\d{4}-\d{2}-\d{2}-step[a-z]+-\d+';/);
   assert.match(sw, /'js\/idb\.js',/);
 });
 

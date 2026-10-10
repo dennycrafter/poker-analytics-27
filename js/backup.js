@@ -43,7 +43,7 @@ const CHILD_COLLECTIONS = COLLECTIONS.filter(k => k !== 'sessions' && k !== 'tra
 // would refuse must never reach the sync flush — a rejected replace there
 // costs the account its existing rows (ISSUES.md #1). Values are judged
 // numerically so CSV-style numeric strings behave like the coerced row.
-function sessionDbError(s) {
+export function sessionDbError(s) {
   const int = v => Number.isInteger(Number(v));
   const nonNeg = (v, label) => {
     if (v === null || v === undefined || v === '') return null;
