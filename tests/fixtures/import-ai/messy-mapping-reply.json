@@ -1,0 +1,20 @@
+{
+  "kind": "table",
+  "mapping": {
+    "confidence": 0.93,
+    "columns": [
+      { "index": 0, "header": "Date Played", "role": "date" },
+      { "index": 1, "header": "Stake", "role": "stakes" },
+      { "index": 2, "header": "Won/Lost", "role": "profit" },
+      { "index": 3, "header": "Duration (h:mm)", "role": "hours" },
+      { "index": 4, "header": "Location", "role": "location" },
+      { "index": 5, "header": "Game", "role": "game" },
+      { "index": 6, "header": "Type", "role": "type" },
+      { "index": 7, "header": "Entries", "role": "ignore" },
+      { "index": 8, "header": "Place", "role": "ignore" },
+      { "index": 9, "header": "Rebuys", "role": "ignore" },
+      { "index": 10, "header": "Hands", "role": "hands" }
+    ],
+    "rules": { "dateFormat": "mdy", "currency": "USD", "kind": "cash", "hoursUnit": "hours" }
+  }
+}

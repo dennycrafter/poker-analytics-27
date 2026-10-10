@@ -1,0 +1,9 @@
+{
+  "kind": "text",
+  "rows": [
+    { "kind": "tournament", "date": "2025-09-15 19:00", "name": "Nightly $80", "buy_in": 80, "rebuys": 1, "entries": 132, "finish": 37, "cash_out": 0, "location": "Lodge", "confidence": 0.92 },
+    { "kind": "tournament", "date": "2025-09-15 21:00", "name": "Nightly $80", "buy_in": 80, "rebuys": 0, "entries": 132, "finish": 3, "cash_out": 940, "location": "Lodge", "confidence": 0.9 },
+    { "kind": "tournament", "date": "2025-09-16", "name": "Deepstack $200", "buy_in": 200, "rebuys": 0, "entries": 64, "finish": 65, "confidence": 0.4 },
+    { "kind": "tournament", "date": "2025-09-17 19:30", "name": "KO $100", "buy_in": 100, "rebuys": 0, "entries": 150, "finish": 160, "confidence": 0.85 }
+  ]
+}
