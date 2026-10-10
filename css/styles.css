@@ -1340,6 +1340,8 @@ button.hm-cell:focus-visible, .hm-cell.sel { outline: 2px solid var(--text-prima
     z-index: 60;
   }
   .modal-screen:focus { outline: none; }
+  /* Desktop shows classic scrollbars; keep them on-theme inside dialogs. */
+  .modal-screen, .modal-screen * { scrollbar-color: #3a3a3a transparent; scrollbar-width: thin; }
   .modal-screen .topbar { border-radius: 18px 18px 0 0; }
   .modal-screen .sticky-end { border-radius: 0 0 18px 18px; }
 
