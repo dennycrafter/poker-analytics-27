@@ -15,7 +15,7 @@ import { supabase } from './supabase-client.js';
 import { idbSet, idbGet, idbDel } from './idb.js';
 import {
   stableStringify, sessionToRow, rowToSessionParts, transactionToRow, rowToTransaction,
-  settingsToRow, applySettingsRow, defaultSettings,
+  settingsToRow, applySettingsRow, defaultSettings, isUuid,
 } from './cloud-map.js';
 import { sessionDbError } from './backup.js';
 import { sessionFingerprint, draftNetResult } from './csv-import.js';
@@ -778,6 +778,10 @@ export function importSessions(drafts, { bankrollId } = {}) {
         updated_at: now,
       };
       if (isPokerNow) { delete row.game_name; delete row.location_name; }
+      // Smart-import batch tags (brief 1.4): device-local fields, cloud-map
+      // has no columns for them (see the import batches section below).
+      if (draft.import_batch) row.import_batch = draft.import_batch;
+      if (draft.import_source) row.import_source = draft.import_source;
       d.sessions.push(row);
       for (const e of Array.isArray(draft.stack_events) ? draft.stack_events : []) {
         if (!e || !['buy_in', 'top_up', 'cash_out'].includes(e.kind)) continue;
@@ -789,4 +793,182 @@ export function importSessions(drafts, { bankrollId } = {}) {
     }
   });
   return { imported, skipped };
+}
+
+
+// --- import batches (smart import, brief 1.4) --------------------------------
+
+// Batch bookkeeping for the smart importer. js/cloud-map.js has no import
+// columns, so SESSION_COLUMNS does not carry them: import_batch / import_source
+// stay device-local (they ride the per-user offline cache exactly like
+// doc.import_keys) and are dropped by sessionToRow and by rows restored from
+// the server. The batch history is therefore per device, and a session edited
+// on another device loses its batch tags. No cloud schema migration here.
+//
+// The flow is stage -> preview -> commit -> (optional) undo:
+//   - stageImport(doc, rows) normalizes parsed rows into importSessions drafts,
+//     flags duplicates (same local day, same kind, profit within $1 of an
+//     existing session) and returns a batchId. It is pure: nothing is written.
+//   - commitImport(doc, batchId, acceptedRows) writes ONLY the rows the user
+//     accepted, through importSessions — the same write path as every other
+//     import: one mutate, offline queue, realtime sync, ref resolution,
+//     fingerprint + import_key dedupe, db guards.
+//   - undoImport(doc, batchId) removes exactly the sessions of that batch (and
+//     their stack events / sell actions, like a manual delete) in one mutate.
+//   - importBatches(doc) derives the batch list for the history UI.
+//
+// Duplicates are flagged, never dropped: they still reach the preview, they
+// just start unticked. findDuplicates(doc, rows) is the standalone probe.
+
+// A row is either an importSessions draft ({ session, refs, net_result, ... })
+// or a raw session-shaped object (possibly with display-name fields). Never
+// mutates the input: raw rows are shallow-copied before the import path
+// mutates them at commit time.
+function importDraftOf(row, index) {
+  if (!row || typeof row !== 'object') return { session: null, line: index + 1 };
+  if (row.session && typeof row.session === 'object') {
+    return { ...row, import_source: row.import_source ?? null, line: row.line ?? index + 1 };
+  }
+  const refs = {};
+  for (const key of ['game', 'location', 'group', 'tournament_type', 'bankroll']) {
+    const v = [`${key}_name`, key].map(n => row[n]).find(v => v !== undefined && v !== null && v !== '');
+    if (v !== undefined) refs[key] = String(v);
+  }
+  const draft = { session: { ...row }, refs, line: row.line ?? index + 1 };
+  if (row.import_source) draft.import_source = row.import_source;
+  return draft;
+}
+
+// Local calendar day (YYYY-MM-DD) of an ISO timestamp. The app displays local
+// dates everywhere, so "same date" means the day the user played, in device
+// local time.
+function localDayOf(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// The existing session a row duplicates, or null. Rule (brief 1.4): same date,
+// same type, profit within $1. Profits are compared in cents so the $1
+// boundary is exact. A row with an unknown profit never matches.
+function duplicateOf(doc, draft) {
+  const s = draft && draft.session;
+  if (!s || typeof s !== 'object' || !s.kind) return null;
+  if (!s.start_time || !Number.isFinite(Date.parse(s.start_time))) return null;
+  const profit = Number.isFinite(draft.net_result) ? draft.net_result : draftNetResult(s);
+  if (!Number.isFinite(profit)) return null;
+  const day = localDayOf(s.start_time);
+  const cents = Math.round(profit * 100);
+  for (const e of doc.sessions) {
+    if (e.kind !== s.kind) continue;
+    if (localDayOf(e.start_time) !== day) continue;
+    const p = netResult(doc, e);
+    if (Number.isFinite(p) && Math.abs(Math.round(p * 100) - cents) <= 100) return e;
+  }
+  return null;
+}
+
+// The rows (same objects, input order) that duplicate an existing session.
+export function findDuplicates(doc, rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  return list.filter(row => duplicateOf(doc, importDraftOf(row)) !== null);
+}
+
+// Stage rows for preview. Pure: nothing is written to the document, the cache
+// or the cloud. Returns { batchId, prepared, duplicates }:
+//   - batchId: uuid stamped on every session commitImport persists,
+//   - prepared: one draft per input row (importSessions shape) plus preview
+//     fields: batchId, import_source, error (null when the row would import),
+//     duplicate, duplicateOf (existing session id, null otherwise),
+//   - duplicates: the prepared rows flagged duplicate.
+export function stageImport(doc, rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  const batchId = genId('batch');
+  const prepared = list.map((row, i) => {
+    const draft = importDraftOf(row, i);
+    const s = draft.session;
+    const invalid = !s || typeof s !== 'object' || !s.kind
+        || !s.start_time || !Number.isFinite(Date.parse(s.start_time))
+      ? 'Row is not a readable session'
+      : (sessionDbError(s) || null);
+    return {
+      ...draft,
+      batchId,
+      import_source: draft.import_source || 'unknown',
+      error: invalid,
+      duplicate: false,
+      duplicateOf: null,
+    };
+  });
+  for (const p of prepared) {
+    if (p.error) continue;
+    const e = duplicateOf(doc, p);
+    if (e) { p.duplicate = true; p.duplicateOf = e.id; }
+  }
+  return { batchId, prepared, duplicates: prepared.filter(p => p.duplicate) };
+}
+
+// Writers must run against the live document: a stale snapshot (captured
+// before a replaceDoc or a remote pull swapped the object) would silently
+// commit a preview the user never saw.
+function assertLiveDoc(doc, fn) {
+  if (doc !== getState()) {
+    throw new TypeError(`${fn}: pass the live document from getState(), not a stale snapshot`);
+  }
+}
+
+// Persist ONLY the accepted rows, through the same import path as every other
+// import. A re-accepted duplicate with an unchanged fingerprint is skipped
+// here by that dedupe, with an honest reason. Returns { batchId, imported,
+// skipped }.
+export function commitImport(doc, batchId, acceptedRows) {
+  assertLiveDoc(doc, 'commitImport');
+  if (!isUuid(batchId)) {
+    throw new TypeError('commitImport: batchId must be the uuid stageImport returned');
+  }
+  const list = Array.isArray(acceptedRows) ? acceptedRows : [];
+  const drafts = list.map((row, i) => {
+    const d = importDraftOf(row, i);
+    return { ...d, import_batch: batchId, import_source: d.import_source || 'unknown' };
+  });
+  const res = importSessions(drafts);
+  return { batchId, imported: res.imported, skipped: res.skipped };
+}
+
+// Delete exactly one batch's sessions (own rows only) and their stack events /
+// sell actions, in one mutate — the same queue-safe write path as a manual
+// delete: rows never confirmed on the server simply vanish from the queue,
+// confirmed rows are deleted in the cloud by the next flush.
+export function undoImport(doc, batchId) {
+  assertLiveDoc(doc, 'undoImport');
+  if (!isUuid(batchId)) {
+    throw new TypeError('undoImport: batchId must be the uuid stageImport returned');
+  }
+  const ids = doc.sessions.filter(s => s.import_batch === batchId).map(s => s.id);
+  if (!ids.length) return { deleted: 0, ids: [] };
+  const dead = new Set(ids);
+  mutate(d => {
+    d.sessions = d.sessions.filter(s => !dead.has(s.id));
+    d.stack_events = d.stack_events.filter(e => !dead.has(e.session_id));
+    d.sell_actions = d.sell_actions.filter(a => !dead.has(a.session_id));
+  });
+  return { deleted: ids.length, ids };
+}
+
+// Batch list for the Settings > Import history UI, newest first. Derived from
+// the sessions themselves, so a batch disappears when its last row is undone.
+export function importBatches(doc) {
+  const map = new Map();
+  for (const s of doc.sessions) {
+    if (!s.import_batch) continue;
+    const b = map.get(s.import_batch)
+      || { batchId: s.import_batch, source: s.import_source || 'unknown', count: 0, createdAt: null };
+    b.count += 1;
+    if (s.created_at && (!b.createdAt || s.created_at < b.createdAt)) b.createdAt = s.created_at;
+    map.set(s.import_batch, b);
+  }
+  return [...map.values()].sort((a, b) =>
+    String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
+    || String(a.batchId).localeCompare(String(b.batchId)));
 }
