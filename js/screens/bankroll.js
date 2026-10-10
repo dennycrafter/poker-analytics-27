@@ -10,6 +10,7 @@ import { fmtMoney, moneyClass, fmtDateShort, getCurrency, toLocalInputValue, fro
 import { lineChart } from '../charts/svg.js';
 import { chartBox } from '../layout.js';
 import { TXN_KINDS, txnSigned, signedAmount, transactionError, bankrollSummary, bankrollSeries, rorBand, bankrollTransactions } from '../bankroll.js';
+import { buildWinrateSensitivityRows, rorPercent } from '../bankroll-ror-ui.js';
 import { addTransaction, updateTransaction, deleteTransaction, addBankroll, renameMasterItem, setDefaultBankroll, deleteMasterItem } from '../domain.js';
 import { masterNameError, masterDeleteError } from '../manage.js';
 
@@ -28,6 +29,28 @@ function wireBack(root) {
 
 function rorHtml(ror) {
   return ror === null ? '<span class="dim">--</span>' : `<span class="${rorBand(ror)}">${ror}%</span>`;
+}
+
+// "What if your winrate is wrong?" (brief section 4): the same hourly mean
+// and SD behind the headline RoR, replayed at 70% and 30% of the winrate and
+// at break even, against the bankroll this screen already computes. The
+// formulas live in bankroll-ror-ui.js (brief section 7).
+function sensitivityHtml(summary, cur) {
+  const m = summary.moments;
+  if (!m) return '';
+  const rows = buildWinrateSensitivityRows({
+    winrate: m.mean, sd: Math.sqrt(m.variance), bankroll: summary.total,
+  });
+  if (!rows) return '';
+  const body = rows.map(r => `<div class="field-row txn-row">
+      <span class="field-name"><span>${esc(r.label)}</span><span class="hint">${esc(fmtMoney(r.winrate, cur))}/h</span></span>
+      <span class="field-value">${rorHtml(rorPercent(r.ror))}<span class="hint">${r.bankrollFor5 === null ? '--' : 'need ' + esc(fmtMoney(Math.round(r.bankrollFor5), cur))}</span></span>
+    </div>`).join('');
+  return `
+    <div class="section-label" style="padding-left:0">What if your winrate is wrong?</div>
+    <p class="hint ror-note">Each row: risk of ruin at your current bankroll, and the bankroll that keeps risk at 5%.</p>
+    <div class="rows" style="padding:0">${body}</div>
+    <p class="hint ror-note">Assumes you never move down. Moving down when you lose a lot of your bankroll makes real risk much lower.</p>`;
 }
 
 function chartHtml(doc, bankrollId) {
@@ -155,6 +178,7 @@ export function BankrollScreen(root, doc) {
         <div class="chart-caption">Bankroll over time</div>
       </div>
       <p class="hint ror-note">Risk of ruin = exp(-2 · mean · bankroll / variance) from your cash hourly results${all.moments ? ` (mean ${fmtMoney(all.moments.mean, cur)}/h, SD ${fmtMoney(Math.sqrt(all.moments.variance), cur)}/h)` : ''}.</p>
+      ${sensitivityHtml(all, cur)}
       <div class="section-label" style="padding-left:0">Bankrolls</div>
       <div class="rows" style="padding:0">${rows || '<div class="empty-block">No bankrolls yet.</div>'}</div>
       <button class="btn-primary" data-act="add-txn">Add transaction</button>
