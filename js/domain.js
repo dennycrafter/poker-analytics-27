@@ -2,6 +2,7 @@
 // and notifies subscribers. Pure entity lookup lives in stats.js.
 
 import { mutate, genId } from './store.js';
+import { endLiveCashIn, endLiveTournamentIn } from './session-math.js';
 
 export function getLiveSession(doc) {
   return doc.sessions.find(s => s.is_live) || null;
@@ -112,38 +113,13 @@ export function logPastSession(fields) {
   return id;
 }
 
-function endCommon(d, sessionId) {
-  const s = d.sessions.find(x => x.id === sessionId);
-  if (!s || !s.is_live) return null;
-  const end = new Date();
-  s.end_time = end.toISOString();
-  s.duration_seconds = Math.max(0, Math.round((end.getTime() - Date.parse(s.start_time)) / 1000));
-  s.is_live = false;
-  s.paused_at = null;
-  s.updated_at = s.end_time;
-  return s;
+// Ending folds an open pause into break_seconds (native rule) — see session-math.js.
+export function endLiveCash(sessionId, cashedOut, nowMs = Date.now()) {
+  mutate(d => { endLiveCashIn(d, sessionId, cashedOut, genId, nowMs); });
 }
 
-export function endLiveCash(sessionId, cashedOut) {
-  mutate(d => {
-    const s = endCommon(d, sessionId);
-    if (!s) return;
-    const amount = Number(cashedOut) || 0;
-    if (amount > 0) {
-      d.stack_events.push({ id: genId('stk'), session_id: s.id, kind: 'cash_out', amount, occurred_at: s.end_time });
-    }
-  });
-}
-
-export function endLiveTournament(sessionId, { position, prize }) {
-  mutate(d => {
-    const s = endCommon(d, sessionId);
-    if (!s) return;
-    if (position !== null && position !== undefined && position !== '') {
-      s.position = Number(position);
-    }
-    s.prize = Number(prize) || 0; // 0 = busted
-  });
+export function endLiveTournament(sessionId, result, nowMs = Date.now()) {
+  mutate(d => { endLiveTournamentIn(d, sessionId, result, nowMs); });
 }
 
 export function updateSession(sessionId, patch) {
