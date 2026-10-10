@@ -65,6 +65,45 @@ export function notesForPlayer(notes, name) {
   return playersFromNotes(notes).find(p => p.name.toLowerCase() === key) || null;
 }
 
+// STEP F: split an Opponents string into display names. Splits on commas,
+// semicolons and newlines, trims each part, drops empties.
+export function opponentsNames(opponents) {
+  return String(opponents ?? '')
+    .split(/[,;\n]/)
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+// STEP F: the players seen at the table — Opponents names from the signed-in
+// user's own sessions, merged with note players (notes deliberately written
+// by the user keep their spelling). Pure: reads only the doc handed to it.
+// Sorted by most recent activity (last session or note), then name.
+export function playersDirectory(doc) {
+  const map = new Map();
+  const ensure = (name, last) => {
+    const key = name.toLowerCase();
+    if (!map.has(key)) map.set(key, { name, notes: [], sessionCount: 0, lastSeen: 0 });
+    const p = map.get(key);
+    if (last > p.lastSeen) p.lastSeen = last;
+    return p;
+  };
+  // Seed notes first so note spellings win over Opponents spellings.
+  for (const p of playersFromNotes(doc.player_notes || [])) ensure(p.name, p.last).notes = p.notes;
+  for (const s of doc.sessions || []) {
+    const t = Date.parse(s.end_time || s.start_time) || 0;
+    for (const name of opponentsNames(s.opponents)) ensure(name, t).sessionCount++;
+  }
+  return [...map.values()].sort((a, b) => b.lastSeen - a.lastSeen || a.name.localeCompare(b.name));
+}
+
+// The sessions that named this player (case-insensitive), newest first.
+export function sessionsForPlayer(doc, name) {
+  const key = String(name || '').trim().toLowerCase();
+  return (doc.sessions || [])
+    .filter(s => opponentsNames(s.opponents).some(n => n.toLowerCase() === key))
+    .sort((a, b) => (Date.parse(b.start_time) || 0) - (Date.parse(a.start_time) || 0));
+}
+
 export function playerNoteError(name, note) {
   if (!String(name ?? '').trim()) return 'Enter the player name';
   if (!String(note ?? '').trim()) return 'Write a note';

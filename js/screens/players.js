@@ -8,7 +8,8 @@ import { icon } from '../icons.js';
 import { esc, toast, openSheet, confirmSheet, textSheet } from '../ui.js';
 import { fmtDateShort } from '../format.js';
 import { addPlayerNote, updatePlayerNote, deletePlayerNote, renamePlayer } from '../domain.js';
-import { playersFromNotes, notesForPlayer, playerNoteError } from '../manage.js';
+import { playersFromNotes, playerNoteError, playersDirectory, sessionsForPlayer } from '../manage.js';
+import { sessionRowHtml } from './feed.js';
 
 // Add (note = null) or edit a player note. `presetName` pre-fills the name.
 export function openNoteSheet({ note = null, presetName = '', sessionId = null, onSaved = null } = {}) {
@@ -52,7 +53,9 @@ export function openNoteSheet({ note = null, presetName = '', sessionId = null, 
 }
 
 export function PlayersScreen(root, doc) {
-  const players = playersFromNotes(doc.player_notes);
+  // STEP F: the merged directory — note players plus players met at the
+  // table (Opponents names from the signed-in user's own sessions).
+  const players = playersDirectory(doc);
   root.innerHTML = `
     <div class="screen">
       <header class="topbar">
@@ -61,14 +64,19 @@ export function PlayersScreen(root, doc) {
         <button class="topbtn accent" data-act="add" aria-label="Add player note">${icon('plus')}</button>
       </header>
       <div class="list">
-        ${players.length ? players.map(p => `
+        ${players.length ? players.map(p => {
+          const sub = p.notes.length
+            ? `${p.notes.length} ${p.notes.length === 1 ? 'note' : 'notes'} · ${esc(p.notes[0].note)}`
+            : p.lastSeen ? `last seen ${esc(fmtDateShort(new Date(p.lastSeen)))}` : 'no activity yet';
+          return `
           <a class="simple-row" href="#/more/players/${encodeURIComponent(p.name)}" data-player="${esc(p.name)}">
             <div class="mid">
               <div class="row-title">${esc(p.name)}</div>
-              <div class="row-sub"><span>${p.notes.length} ${p.notes.length === 1 ? 'note' : 'notes'} · ${esc(p.notes[0].note)}</span></div>
+              <div class="row-sub"><span>${p.sessionCount} ${p.sessionCount === 1 ? 'session' : 'sessions'} · ${sub}</span></div>
             </div>
             ${icon('chevron', 'chev')}
-          </a>`).join('') : '<div class="empty-block">No players yet. Tap + to write your first note.</div>'}
+          </a>`;
+        }).join('') : '<div class="empty-block">No players yet. Opponents you enter on sessions and player notes will show up here. Tap + to write your first note.</div>'}
       </div>
       <div class="spacer-40"></div>
     </div>`;
@@ -79,8 +87,11 @@ export function PlayersScreen(root, doc) {
 export function PlayerDetailScreen(root, doc, rawName) {
   let name;
   try { name = decodeURIComponent(rawName); } catch (e) { navigate('/more/players'); return; }
-  const p = notesForPlayer(doc.player_notes, name);
+  // STEP F: merged profile — notes plus the sessions that named this player.
+  const key = name.trim().toLowerCase();
+  const p = playersDirectory(doc).find(x => x.name.toLowerCase() === key);
   if (!p) { navigate('/more/players'); return; }
+  const together = sessionsForPlayer(doc, p.name);
   root.innerHTML = `
     <div class="screen">
       <header class="topbar">
@@ -98,6 +109,11 @@ export function PlayerDetailScreen(root, doc, rawName) {
             ${icon('chevron', 'chev')}
           </button>`).join('')}
       </div>
+      ${together.length ? `
+        <div class="section-label">Sessions together (${together.length})</div>
+        <div class="list">
+          ${together.map(s => sessionRowHtml(doc, s)).join('')}
+        </div>` : ''}
       <button class="btn-primary" data-act="add">Add note</button>
       <div class="spacer-40"></div>
     </div>`;

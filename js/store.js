@@ -459,8 +459,10 @@ function onRealtime(payload) {
   if (!row) return;
   if (table !== 'user_settings' && !row.id) return;
   if (row.user_id && row.user_id !== userId) return;
-  // DELETE events cannot be filtered server-side and carry only the primary
-  // key, so ignore ids this account has never seen (another user's rows).
+  // Belt-and-suspenders for DELETE: the bindings are owner-filtered and the
+  // server trigger (REPLICA IDENTITY FULL) already keeps other users' events
+  // out — drop the never-deleted user_settings row and any id this account
+  // has never seen if an unfiltered event ever arrives.
   if (payload.eventType === 'DELETE' && table === 'user_settings') return;
   const key = keyOf(table, row.id);
   if (payload.eventType === 'DELETE' && !serverFp.has(key) && !localFpOf(key)) return;
@@ -485,7 +487,7 @@ function subscribeRealtime(uid) {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table, filter }, onRealtime);
   }
   for (const table of ['sessions', 'bankroll_transactions']) {
-    ch = ch.on('postgres_changes', { event: 'DELETE', schema: 'public', table }, onRealtime);
+    ch = ch.on('postgres_changes', { event: 'DELETE', schema: 'public', table, filter }, onRealtime);
   }
   return ch.subscribe((state, err) => {
     if (state === 'SUBSCRIBED') {
