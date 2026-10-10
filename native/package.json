@@ -47,7 +47,8 @@
     "gen:money-golden": "tsx scripts/gen-money-golden.ts",
     "test:integration:money": "tsx scripts/integration-money.ts",
     "export:web": "expo export --platform web",
-    "golden:display": "TZ=UTC tsx scripts/gen-display-golden.ts && TZ=Europe/Dublin tsx scripts/gen-display-golden.ts && TZ=America/Los_Angeles tsx scripts/gen-display-golden.ts"
+    "golden:display": "TZ=UTC tsx scripts/gen-display-golden.ts && TZ=Europe/Dublin tsx scripts/gen-display-golden.ts && TZ=America/Los_Angeles tsx scripts/gen-display-golden.ts",
+    "test:integration:display": "tsx scripts/integration-display.ts"
   },
   "private": true
 }
